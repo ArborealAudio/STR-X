@@ -3,7 +3,9 @@ v1.1
 Digital Guitar Amp
 
 CHANGES
+
 //==================
+
 -macOS support (Catalina/Big Sur/M1)
 
 -4x oversampling with minimal-latency, polyphase IIR filters, with the option for offline render-only 4x oversampling with linear-phase FIR filters
