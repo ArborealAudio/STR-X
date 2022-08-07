@@ -9,14 +9,13 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "PowerAmp.h"
-#include "PreAmp.h"
-#include "ts9.h"
+#include "STR-X.h"
 
 //==============================================================================
 /**
 */
-class STRXAudioProcessor  : public juce::AudioProcessor
+class STRXAudioProcessor  : public AudioProcessor,
+                            public AudioProcessorValueTreeState::Listener
 {
 public:
     //==============================================================================
@@ -31,14 +30,14 @@ public:
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
    #endif
 
-    void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+    void processBlock (AudioBuffer<float>&, MidiBuffer&) override;
 
     //==============================================================================
-    juce::AudioProcessorEditor* createEditor() override;
+    AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override;
 
     //==============================================================================
-    const juce::String getName() const override;
+    const String getName() const override;
 
     bool acceptsMidi() const override;
     bool producesMidi() const override;
@@ -49,65 +48,50 @@ public:
     int getNumPrograms() override;
     int getCurrentProgram() override;
     void setCurrentProgram (int index) override;
-    const juce::String getProgramName (int index) override;
-    void changeProgramName (int index, const juce::String& newName) override;
+    const String getProgramName (int index) override;
+    void changeProgramName (int index, const String& newName) override;
 
     //==============================================================================
-    void getStateInformation (juce::MemoryBlock& destData) override;
+    void getStateInformation (MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
+
+    void parameterChanged(const String& parameterID, float newValue) override;
+    
+    void updateOversample();
     
     void updateFilters();
 
-    float updateParameters();
+    AudioProcessorValueTreeState apvts;
 
-    void updateCrossover();
-
-    juce::AudioProcessorValueTreeState apvts;
+    std::array<dsp::Oversampling<float>, 3> oversample
+    { {
+        {dsp::Oversampling<float>(2)},
+        {dsp::Oversampling<float>(2)},
+        {dsp::Oversampling<float>(2)},
+    } };
+    
+    int lastUIWidth, lastUIHeight;
 
 private:
 
-    double lastSampleRate;
+    int osIndex = 0;
+    double lastSampleRate = 0.0;
+    double lastDownSampleRate = 0.0;
+    int numSamples = 0.0;
 
-    juce::AudioProcessorValueTreeState::ParameterLayout createParameters();
+    bool isOversampled = false;
 
-    juce::NormalisableRange<float> nRange;
-    juce::NormalisableRange<float> outVolRange;
+    AudioProcessorValueTreeState::ParameterLayout createParameters();
 
-    std::atomic<float>* inputGain = nullptr;
-    std::atomic<float>* outGain = nullptr;
-    std::atomic<float>* tsXGain = nullptr;
-    std::atomic<float>* bright = nullptr;
+    NormalisableRange<float> nRange, outVolRange;
 
-    juce::dsp::Gain<float> outVol;
+    std::atomic<float>* hq = nullptr, *renderHQ = nullptr, *outVol_dB = nullptr, *legacyTone = nullptr;
 
-    juce::dsp::LinkwitzRileyFilter<double> lowBand, hiBand;
+    AmpProcessor amp;
 
-    TS9 ts9;
-
-    PreAmp preamp;
-
-    juce::dsp::IIR::Filter<double> highPass;
-    juce::dsp::IIR::Filter<double> bandPass;
-    juce::dsp::IIR::Filter<double> lowPass;
-
-    juce::dsp::IIR::Filter<double> bass;
-    juce::dsp::IIR::Filter<double> mid;
-    juce::dsp::IIR::Filter<double> treble;
-    juce::dsp::IIR::Filter<double> presence;
-    juce::dsp::IIR::Filter<double> brightShelf;
-
-    ClassBValvePair poweramp;
-
-    void boundValue(float& value, float minValue, float maxValue)
+    /*input * (max-min)+min*/
+    float cookParams(float valueToCook, float minValue, float maxValue) 
     {
-        value = fmin(value, maxValue);
-        value = fmax(value, minValue);
-    }
-
-    float cookParams(float valueToCook, float minValue, float maxValue)
-    {
-        boundValue(valueToCook, 0.0, 1.0);
-
         return valueToCook * (maxValue - minValue) + minValue;
     }
 

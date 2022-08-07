@@ -9,23 +9,51 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+
 //==============================================================================
 STRXAudioProcessor::STRXAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
      : AudioProcessor (BusesProperties()
                      #if ! JucePlugin_IsMidiEffect
                       #if ! JucePlugin_IsSynth
-                       .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
+                       .withInput  ("Input",  AudioChannelSet::stereo(), true)
                       #endif
-                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
+                       .withOutput ("Output", AudioChannelSet::stereo(), true)
                      #endif
                        ), apvts(*this, nullptr, "Parameters", createParameters())
+                        
 #endif
 {
-    inputGain = apvts.getRawParameterValue("gain");
-    outGain = apvts.getRawParameterValue("master");
-    tsXGain = apvts.getRawParameterValue("tsXgain");
-    bright = apvts.getRawParameterValue("bright");
+    lastUIWidth = 775;
+    lastUIHeight = 500;
+    hq = apvts.getRawParameterValue("hq");    
+    renderHQ = apvts.getRawParameterValue("renderHQ");
+    apvts.addParameterListener("hq", this);
+    apvts.addParameterListener("renderHQ", this);
+    amp.inputGain = apvts.getRawParameterValue("gain");
+    amp.outGain = apvts.getRawParameterValue("master");
+    amp.tsXGain = apvts.getRawParameterValue("tsXgain");
+    amp.bright = apvts.getRawParameterValue("bright");
+    amp.crossover = apvts.getRawParameterValue("mode");
+    outVol_dB = apvts.getRawParameterValue("outVol");
+    legacyTone = apvts.getRawParameterValue("legacyTone");
+    apvts.addParameterListener("bass", this);
+    apvts.addParameterListener("mid", this);
+    apvts.addParameterListener("treble", this);
+    apvts.addParameterListener("presence", this);
+    apvts.addParameterListener("legacyTone", this);
+
+    oversample[1].clearOversamplingStages();
+    oversample[1].addOversamplingStage(dsp::Oversampling<float>::filterHalfBandPolyphaseIIR,
+        0.02, -90.0, 0.05, -90.0);
+    oversample[1].addOversamplingStage(dsp::Oversampling<float>::filterHalfBandPolyphaseIIR,
+        0.02, -90.0, 0.05, -90.0);
+
+    oversample[2].clearOversamplingStages();
+    oversample[2].addOversamplingStage(dsp::Oversampling<float>::filterHalfBandFIREquiripple,
+        0.02, -90.0, 0.05, -90.0);
+    oversample[2].addOversamplingStage(dsp::Oversampling<float>::filterHalfBandFIREquiripple,
+        0.02, -90.0, 0.05, -90.0);
 }
 
 STRXAudioProcessor::~STRXAudioProcessor()
@@ -33,7 +61,7 @@ STRXAudioProcessor::~STRXAudioProcessor()
 }
 
 //==============================================================================
-const juce::String STRXAudioProcessor::getName() const
+const String STRXAudioProcessor::getName() const
 {
     return JucePlugin_Name;
 }
@@ -85,75 +113,49 @@ void STRXAudioProcessor::setCurrentProgram (int index)
 {
 }
 
-const juce::String STRXAudioProcessor::getProgramName (int index)
+const String STRXAudioProcessor::getProgramName (int index)
 {
     return {};
 }
 
-void STRXAudioProcessor::changeProgramName (int index, const juce::String& newName)
+void STRXAudioProcessor::changeProgramName (int index, const String& newName)
 {
 }
 
 //==============================================================================
 void STRXAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
-{
-    lastSampleRate = sampleRate;
-    
-    juce::dsp::ProcessSpec spec;
+{   
+    lastDownSampleRate = sampleRate;
+    numSamples = samplesPerBlock;
+
+    updateOversample();
+
+    if (isOversampled == true)
+        lastSampleRate = sampleRate * 4;
+    else
+        lastSampleRate = sampleRate;
+
+    dsp::ProcessSpec spec;
     spec.maximumBlockSize = samplesPerBlock;
-    spec.sampleRate = sampleRate;
-    spec.numChannels = getTotalNumOutputChannels();
+    spec.sampleRate = lastSampleRate;
+    spec.numChannels = getTotalNumInputChannels();
+
+    for (auto& oversampler : oversample)
+        oversampler.initProcessing(static_cast<size_t>(samplesPerBlock));
+
+    for (auto& oversampler : oversample)
+        oversampler.reset();
+
+    amp.prepare(spec, lastSampleRate);
     
-    ts9.prepare(spec);
-    highPass.prepare(spec);
-    bandPass.prepare(spec);
-    lowPass.prepare(spec);
-    lowBand.prepare(spec);
-    hiBand.prepare(spec);
-    poweramp.dcRemoval.prepare(spec);
-    preamp.dcRemoval.prepare(spec);
-    preamp.lowShelf.prepare(spec);
-    preamp.inputHPF.prepare(spec);
-    bass.prepare(spec);
-    mid.prepare(spec);
-    treble.prepare(spec);
-    presence.prepare(spec);
-    brightShelf.prepare(spec);
-    outVol.prepare(spec);
-
-    lowBand.setType(juce::dsp::LinkwitzRileyFilterType::lowpass);
-    hiBand.setType(juce::dsp::LinkwitzRileyFilterType::highpass);
-
-    highPass.coefficients = (juce::dsp::IIR::Coefficients<double>::makeFirstOrderHighPass(sampleRate, 750.f));
-    bandPass.coefficients = (juce::dsp::IIR::Coefficients<double>::makeBandPass(sampleRate, 80.f));
-    lowPass.coefficients = (juce::dsp::IIR::Coefficients<double>::makeFirstOrderLowPass(sampleRate, 10000.f));
-    brightShelf.coefficients = (juce::dsp::IIR::Coefficients<double>::makeHighShelf(sampleRate, 2500.0, 0.707, 2.0));
-
-    poweramp.dcRemoval.coefficients = (juce::dsp::IIR::Coefficients<double>::makeHighPass(sampleRate, 10.0));
-    preamp.dcRemoval.coefficients = (juce::dsp::IIR::Coefficients<double>::makeHighPass(sampleRate, 10.0));
-    preamp.lowShelf.coefficients = (juce::dsp::IIR::Coefficients<double>::makeLowShelf(sampleRate, 185.0, 1.8, 0.5));
-    preamp.inputHPF.coefficients = (juce::dsp::IIR::Coefficients<double>::makeHighPass(sampleRate, 65.0));
-
-    highPass.reset();
-    bandPass.reset();
-    lowPass.reset();
-    lowBand.reset();
-    hiBand.reset();
-    poweramp.dcRemoval.reset();
-    preamp.dcRemoval.reset();
-    preamp.inputHPF.reset();
-    preamp.lowShelf.reset();
-    bass.reset();
-    mid.reset();
-    treble.reset();
-    presence.reset();
-    brightShelf.reset();
-    outVol.reset();
 }
 
 void STRXAudioProcessor::releaseResources()
 {
-    
+    for (auto& oversampler : oversample)
+        oversampler.reset();
+
+    amp.reset();
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -167,8 +169,8 @@ bool STRXAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) con
     // In this template code we only support mono or stereo.
     // Some plugin hosts, such as certain GarageBand versions, will only
     // load plugins that support stereo bus layouts.
-    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
-     && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
+    if (layouts.getMainOutputChannelSet() != AudioChannelSet::mono()
+     && layouts.getMainOutputChannelSet() != AudioChannelSet::stereo())
         return false;
 
     // This checks if the input layout matches the output layout
@@ -182,6 +184,52 @@ bool STRXAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) con
 }
 #endif
 
+void STRXAudioProcessor::updateOversample()
+{
+    if (*renderHQ == true && isNonRealtime() == true) {
+        osIndex = 2;
+        isOversampled = true;
+    }
+    else if (*hq == true) {
+        osIndex = 1;
+        isOversampled = true;
+    }
+    else {
+        osIndex = 0;
+        isOversampled = false;
+    }
+}
+
+void STRXAudioProcessor::parameterChanged(const String& parameterID, float newValue)
+{
+    if (parameterID == "renderHQ" || parameterID == "hq") {
+        if (*renderHQ == true && isNonRealtime() == true) {
+            osIndex = 2;
+            lastSampleRate = 4 * lastDownSampleRate;
+            isOversampled = true;
+        }
+        else if (*hq == true) {
+            osIndex = 1;
+            lastSampleRate = 4 * lastDownSampleRate;
+            isOversampled = true;
+        }
+        else {
+            osIndex = 0;
+            lastSampleRate = lastDownSampleRate;
+            isOversampled = false;
+        }
+
+        dsp::ProcessSpec newSpec;
+        newSpec.sampleRate = lastSampleRate;
+        newSpec.maximumBlockSize = numSamples;
+        newSpec.numChannels = getTotalNumInputChannels();
+
+        amp.prepare(newSpec, lastSampleRate);
+    }
+
+    updateFilters();
+}
+
 void STRXAudioProcessor::updateFilters()
 {    
     float bassParam = *apvts.getRawParameterValue("bass");
@@ -194,102 +242,58 @@ void STRXAudioProcessor::updateFilters()
     trebleParam /= 10;
     presenceParam /= 10;
 
-    float bassCook = cookParams(bassParam, 0.2, 1.666);
-    float midCook = cookParams(midParam, 0.3, 2.2);
-    float trebleCook = cookParams(trebleParam, 0.2, 3.0);
-    float presenceCook = cookParams(presenceParam, 0.4, 2.5);
-    
-    *bass.coefficients = *(juce::dsp::IIR::Coefficients<double>::makeLowShelf(lastSampleRate, 150.f, 0.606f,
-        bassCook));
-    *mid.coefficients = *(juce::dsp::IIR::Coefficients<double>::makePeakFilter(lastSampleRate, 600.f, 0.5f,
-        midCook));
-    *treble.coefficients = *(juce::dsp::IIR::Coefficients<double>::makeHighShelf(lastSampleRate, 1500.f, 0.3f,
-        trebleCook));
-    *presence.coefficients = *(juce::dsp::IIR::Coefficients<double>::makePeakFilter(lastSampleRate, 4000.f, 0.6f,
-        presenceCook));
-}
+    float bassCook = 0.0, midCook = 0.0, trebleCook = 0.0, presenceCook = 0.0;
 
-void STRXAudioProcessor::updateCrossover()
-{
-    float mode = *apvts.getRawParameterValue("mode");
-    
-    if (mode == 0) {
-        lowBand.setCutoffFrequency(100.0);
-        hiBand.setCutoffFrequency(100.0);
-    }
-    else if (mode == 1) {
-        lowBand.setCutoffFrequency(250.0);
-        hiBand.setCutoffFrequency(250.0);
+    if (*legacyTone == false) {
+        // convert 0 - 1 value into a dB value
+        bassCook = jmap(bassParam, -12.f, 12.f);
+        midCook = jmap(midParam, -7.f, 7.f);
+        trebleCook = jmap(trebleParam, -14.f, 14.f);
+        presenceCook = jmap(presenceParam, -8.f, 8.f);
+
+        // convert to linear multiplier
+        bassCook = pow(10, (bassCook / 20));
+        midCook = pow(10, (midCook / 20));
+        trebleCook = pow(10, (trebleCook / 20));
+        presenceCook = pow(10, (presenceCook / 20));
     }
     else {
-        lowBand.setCutoffFrequency(400.0);
-        hiBand.setCutoffFrequency(400.0);
+        // convert 0 - 1 value into legacy linear values
+        bassCook = cookParams(bassParam, 0.2f, 1.666f);
+        midCook = cookParams(midParam, 0.3f, 2.2f);
+        trebleCook = cookParams(trebleParam, 0.2f, 3.0f);
+        presenceCook = cookParams(presenceParam, 0.4f, 2.5f);
     }
     
+    amp.updateFilters(lastSampleRate, bassCook, midCook, trebleCook, presenceCook);
 }
 
-float STRXAudioProcessor::updateParameters()
+void STRXAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& midiMessages)
 {
-    float outVol_dB = *apvts.getRawParameterValue("outVol");
-
-    return outVol_dB;
-}
-
-void STRXAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
-{
-    juce::ScopedNoDenormals noDenormals;
+    ScopedNoDenormals noDenormals;
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
+    
+    float out_raw = pow(10, (*outVol_dB / 20));
 
-    ts9.updateFilters();
-    updateCrossover();
-    updateFilters();
-    float outVol_dB = updateParameters();
+    dsp::AudioBlock<float> block(buffer);
+    dsp::ProcessContextReplacing<float> context(block);
+    const auto& inBlock = context.getInputBlock();
+    auto& outBlock = context.getOutputBlock();
 
-    float** channelData = buffer.getArrayOfWritePointers();
-    for(int i = 0; i < buffer.getNumSamples(); ++i)
-    {        
-        float x = 0.5f * (channelData[0][i] + channelData[1][i]);              
-        
-        x = ts9.processAudioSample(x, *tsXGain);
+    auto osBlock = oversample[osIndex].processSamplesUp(inBlock);
+    dsp::ProcessContextReplacing<float> ampContext(osBlock);
 
-        x = 8 * (*inputGain * x);
-        double xnL = lowBand.processSample(0, x);
-        double xnH = hiBand.processSample(0, x);
+    amp.processAmp(ampContext);
 
-        float k = *inputGain / 3.0;
+    oversample[osIndex].processSamplesDown(outBlock);
+    outBlock *= out_raw;
 
-        double yn = preamp.processAudioSample(xnH, xnL, k);
-
-        double xHPF = highPass.processSample(yn);
-        double xBPF = bandPass.processSample(yn);
-        yn = xHPF + xBPF;
-        double xB = bass.processSample(yn);
-        double xM = mid.processSample(xB);
-        double xT = treble.processSample(xM);
-        double xP = presence.processSample(xT);
-        if (*bright == 0) {
-            yn = lowPass.processSample(xP);
-        }
-        else {
-            yn = brightShelf.processSample(xP);
-        }
-        
-        yn *= (*outGain / 5);
-        
-        yn = poweramp.processAudioSample(yn);
-
-        yn /= 3;
-
-        outVol.setGainDecibels(outVol_dB);
-        yn = outVol.processSample(yn);
-
-        channelData[0][i] = yn;
-        channelData[1][i] = yn;
-    }
+    setLatencySamples(oversample[osIndex].getLatencyInSamples());
+    
 }
 
 //==============================================================================
@@ -298,61 +302,73 @@ bool STRXAudioProcessor::hasEditor() const
     return true; // (change this to false if you choose to not supply an editor)
 }
 
-juce::AudioProcessorEditor* STRXAudioProcessor::createEditor()
+AudioProcessorEditor* STRXAudioProcessor::createEditor()
 {
     return new STRXAudioProcessorEditor (*this);
 }
 
 //==============================================================================
-void STRXAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
+void STRXAudioProcessor::getStateInformation (MemoryBlock& destData)
 {
     auto state = apvts.copyState();
-    std::unique_ptr<juce::XmlElement> xml(state.createXml());
+    std::unique_ptr<XmlElement> xml(state.createXml());
+    xml->setAttribute("uiWidth", lastUIWidth);
+    xml->setAttribute("uiHeight", lastUIHeight);
     copyXmlToBinary(*xml, destData);
 }
 
 void STRXAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
-    if (xmlState.get() != nullptr)
+    std::unique_ptr<XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
+    if (xmlState.get() != nullptr) {
+        lastUIWidth = xmlState->getIntAttribute("uiWidth", lastUIWidth);
+        lastUIHeight = xmlState->getIntAttribute("uiHeight", lastUIHeight);
         if (xmlState->hasTagName(apvts.state.getType()))
-            apvts.replaceState(juce::ValueTree::fromXml(*xmlState));
+            apvts.replaceState(ValueTree::fromXml(*xmlState));
+    }
 }
 
 //==============================================================================
 // This creates new instances of the plugin..
-juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
+AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new STRXAudioProcessor();
 }
 
-juce::AudioProcessorValueTreeState::ParameterLayout STRXAudioProcessor::createParameters()
+AudioProcessorValueTreeState::ParameterLayout STRXAudioProcessor::createParameters()
 {
-    juce::NormalisableRange<float> nRange(1.f, 10.f, 0.1, 1.0, true);
+    NormalisableRange<float> nRange(0.f, 10.f, 0.1, 1.0, true);
     nRange.setSkewForCentre(5.0);
 
-    juce::NormalisableRange<float> outVolRange(-20.f, 12.f, 0.1, 1.0, false);
+    NormalisableRange<float> gainRange(1.f, 10.f, 0.1, 1.0, true);
+    gainRange.setSkewForCentre(5.0);
 
-    std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
+    NormalisableRange<float> outVolRange(-20.f, 12.f, 0.1, 1.0, false);
 
-    params.push_back(std::make_unique<juce::AudioParameterFloat>
-        ("gain", "Gain", nRange, 3.f));
-    params.push_back(std::make_unique <juce::AudioParameterChoice>
+    std::vector<std::unique_ptr<RangedAudioParameter>> params;
+
+    params.push_back(std::make_unique<AudioParameterFloat>
+        ("gain", "Gain", gainRange, 3.f));
+    params.push_back(std::make_unique <AudioParameterChoice>
         ("mode", "Mode", juce::StringArray{ "Thick", "Normal", "Open" }, 1));
-    params.push_back(std::make_unique <juce::AudioParameterFloat>
+    params.push_back(std::make_unique <AudioParameterFloat>
         ("bass", "Bass", nRange, 5.f));
-    params.push_back(std::make_unique <juce::AudioParameterFloat>
+    params.push_back(std::make_unique <AudioParameterFloat>
         ("mid", "Mid", nRange, 5.f));
-    params.push_back(std::make_unique <juce::AudioParameterFloat>
+    params.push_back(std::make_unique <AudioParameterFloat>
         ("treble", "Treble", nRange, 5.f));
-    params.push_back(std::make_unique <juce::AudioParameterFloat>
+    params.push_back(std::make_unique <AudioParameterFloat>
         ("presence", "Presence", nRange, 5.f));
-    params.push_back(std::make_unique<juce::AudioParameterBool>("bright", "Bright", false));
-    params.push_back(std::make_unique <juce::AudioParameterFloat>("tsXgain", "TSXGain", 0.f, 10.0f, 0.f));
-    params.push_back(std::make_unique <juce::AudioParameterFloat>
-        ("master", "Master", nRange, 5.f));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>
+    params.push_back(std::make_unique<AudioParameterBool>("bright", "Bright", false));
+    params.push_back(std::make_unique <AudioParameterFloat>("tsXgain", "X Gain", 0.f, 10.0f, 0.f));
+    params.push_back(std::make_unique <AudioParameterFloat>
+        ("master", "Master", gainRange, 5.f));
+    params.push_back(std::make_unique<AudioParameterFloat>
         ("outVol", "Output Volume", outVolRange, 0.0));
+    params.push_back(std::make_unique<AudioParameterBool>("hq", "HQ", false));    
+    params.push_back(std::make_unique<AudioParameterBool>("renderHQ", "Render HQ", false));
+    params.push_back(std::make_unique<AudioParameterBool>("legacyTone", "Use Legacy Tone Controls", false));
+    
 
     return { params.begin(), params.end() };  
     

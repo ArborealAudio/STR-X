@@ -50,6 +50,8 @@ public:
     // Binary resources:
     static const char* strx_png;
     static const int strx_pngSize;
+    static const char* arborealLogo_2small_png;
+    static const int arborealLogo_2small_pngSize;
 
 
 private:
@@ -57,7 +59,8 @@ private:
     //[/UserVariables]
 
     //==============================================================================
-    juce::Image cachedImage_strx_png_1;
+    juce::Image cachedImage_arborealLogo_2small_png_1;
+    juce::Image cachedImage_strx_png_2;
 
 
     //==============================================================================

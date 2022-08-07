@@ -10,23 +10,23 @@
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
-#include "background.h"
+#include "Background.h"
 
 //==============================================================================
 /**
 */
-class CustomLookAndFeel : public juce::LookAndFeel_V4
+class CustomLookAndFeel : public LookAndFeel_V4
 {
 public:
     CustomLookAndFeel()
     {
-        setColour(juce::Slider::thumbColourId, juce::Colours::white);
+        setColour(Slider::thumbColourId, Colours::white);
     }
 
-    void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height, float sliderPos,
-        const float rotaryStartAngle, const float rotaryEndAngle, juce::Slider&) override
+    void drawRotarySlider(Graphics& g, int x, int y, int width, int height, float sliderPos,
+        const float rotaryStartAngle, const float rotaryEndAngle, Slider& slider) override
     {
-        auto radius = (float)juce::jmin(width / 2, height / 2) - 4.0f;
+        auto radius = (float)jmin(width / 2, height / 2) - 4.0f;
         auto centerX = (float)x + (float)width * 0.5f;
         auto centerY = (float)y + (float)height * 0.5f;
         auto rx = centerX - radius;
@@ -34,94 +34,117 @@ public:
         auto rw = radius * 2.f;
         auto angle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
 
-        g.setColour(juce::Colours::white);
+        g.setColour(Colours::white);
         g.fillEllipse(rx, ry, rw, rw);
-        g.setColour(juce::Colour (0xff374037));
+        g.setColour(Colour (0xff374037));
         g.drawEllipse(rx, ry, rw, rw, 3.0f);
 
-        juce::Path p;
+        Path p;
         auto pointerLength = radius * 0.5f;
         auto pointerThickness = 2.0f;
         p.addRectangle(-pointerThickness * 0.5f, -radius, pointerThickness, pointerLength);
-        p.applyTransform(juce::AffineTransform::rotation(angle).translated(centerX, centerY));
+        p.applyTransform(AffineTransform::rotation(angle).translated(centerX, centerY));
 
-        g.setColour(juce::Colour (0xff374037));
+        g.setColour(Colour (0xff374037));
         g.fillPath(p);
+
+        if (slider.isMouseOverOrDragging())
+        {
+            g.setColour(Colour(0xff4e6f4e));
+            g.drawEllipse(rx, ry, rw, rw, 3.0f);
+        }
+       
     }
 
-    void drawComboBox(juce::Graphics& g, int width, int height, bool isButtonDown, int buttonX, int buttonY,
-        int buttonW, int buttonH, juce::ComboBox&) override
+    void drawComboBox(Graphics& g, int width, int height, bool isButtonDown, int buttonX, int buttonY,
+        int buttonW, int buttonH, ComboBox& comboBox) override
     {
-        juce::Rectangle<float> box;
+        Rectangle<float> box;
         box.setSize(width, height);
+        g.setColour(Colours::transparentBlack);
         g.drawRoundedRectangle(box, 10.f, 3.f);
     }
 
-    void drawButtonBackground(juce::Graphics& g, juce::Button& button, const juce::Colour& backgroundColor,
+    void drawButtonBackground(Graphics& g, Button& button, const Colour& backgroundColor,
         bool isMouseOverButton, bool isButtonDown) override
     {
-        auto buttonArea = button.getLocalBounds();
-        g.setColour(juce::Colours::transparentBlack);
-        g.fillRect(buttonArea);
+        auto buttonArea = button.getLocalBounds().toFloat();
+        g.setColour(Colours::transparentBlack);
+        g.fillRoundedRectangle(buttonArea, 3.f);
 
         if (button.isMouseOver()) {
-            g.setColour(juce::Colour(0xff374037));
-            g.fillRect(buttonArea);
+            g.setColour(Colour(0xff374037));
+            g.fillRoundedRectangle(buttonArea, 3.f);
         }
 
         if (button.getToggleState()) {
-            g.setColour(juce::Colour(0xff4e6f4e));
-            g.fillRect(buttonArea);
+            g.setColour(Colour(0xff4e6f4e));
+            g.fillRoundedRectangle(buttonArea, 3.f);
         }
     }
 
 };
 
-class STRXAudioProcessorEditor  : public juce::AudioProcessorEditor
+//=================================================================================
+
+class STRXAudioProcessorEditor  : public AudioProcessorEditor
 {
 public:
     STRXAudioProcessorEditor (STRXAudioProcessor&);
     ~STRXAudioProcessorEditor() override;
 
+    
+
     //==============================================================================
-    void paint (juce::Graphics&) override;
+    void paint (Graphics&) override;
     void resized() override;
 
 private:
     CustomLookAndFeel customLookAndFeel;
 
-    juce::Slider ts9Gain;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> ts9Attachment;
+    Slider ts9Gain;
+    std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> ts9Attachment;
     
-    juce::Slider inputGain;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> inputGainAttachment;
+    Slider inputGain;
+    std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> inputGainAttachment;
 
-    juce::ComboBox mode;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> modeAttachment;
+    ComboBox mode;
+    std::unique_ptr<AudioProcessorValueTreeState::ComboBoxAttachment> modeAttachment;
 
-    juce::Slider bassParam;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> bassParamAttachment;
+    Slider bassParam;
+    std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> bassParamAttachment;
 
-    juce::Slider midParam;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> midParamAttachment;
+    Slider midParam;
+    std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> midParamAttachment;
 
-    juce::Slider trebleParam;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> trebleParamAttachment;
+    Slider trebleParam;
+    std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> trebleParamAttachment;
 
-    juce::Slider presenceParam;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> presenceAttachment;
+    Slider presenceParam;
+    std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> presenceAttachment;
 
-    juce::TextButton brightButton;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> brightAttachment;
+    TextButton brightButton;
+    std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> brightAttachment;
 
-    juce::Slider outGain;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> outGainAttachment;
+    Slider outGain;
+    std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> outGainAttachment;
 
-    juce::Slider outVol;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> outVolAttachment;
+    Slider outVol;
+    std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> outVolAttachment;
+    
+    TextButton hqButton;   
+    std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> hqButtonAttach;
+    
+    TextButton renderHQ;
+    std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> renderButtonAttach;
+
+    ToggleButton legacyTone;
+    std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> legacyToneAttach;
     
     Background background;
-    
+
+    TooltipWindow tooltipWindow;
+
     STRXAudioProcessor& audioProcessor;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (STRXAudioProcessorEditor)

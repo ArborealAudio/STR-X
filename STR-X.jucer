@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="OSRWLO" name="STR-X" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
-              companyName="Strix Audio" companyWebsite="strixaudio.wordpress.com"
+              addUsingNamespaceToJuceHeader="1" displaySplashScreen="1" jucerFormatVersion="1"
+              companyName="Arboreal Audio" companyWebsite="arborealaudio.com"
               pluginFormats="buildAU,buildVST,buildVST3" pluginManufacturerCode="STRX"
-              pluginCode="STRX" cppLanguageStandard="latest">
+              pluginCode="STRX" cppLanguageStandard="latest" version="1.1"
+              pluginName="STR-X v1.1">
   <MAINGROUP id="O5aG9k" name="STR-X">
     <GROUP id="{A7398CBF-DADB-BD19-158F-42E3FAB69087}" name="Source">
       <FILE id="CArqeK" name="PluginProcessor.cpp" compile="1" resource="0"
@@ -16,9 +17,7 @@
       <FILE id="YnF5lV" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
       <FILE id="h8bCaD" name="Background.cpp" compile="1" resource="0" file="Source/Background.cpp"/>
       <FILE id="iJqD7b" name="Background.h" compile="0" resource="0" file="Source/Background.h"/>
-      <FILE id="KjBmSG" name="PowerAmp.h" compile="0" resource="0" file="Source/PowerAmp.h"/>
-      <FILE id="K4p2Ri" name="PreAmp.h" compile="0" resource="0" file="Source/PreAmp.h"/>
-      <FILE id="MoW9E5" name="TS9.h" compile="0" resource="0" file="Source/TS9.h"/>
+      <FILE id="q99oXo" name="STR-X.h" compile="0" resource="0" file="Source/STR-X.h"/>
     </GROUP>
   </MAINGROUP>
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0"/>
