@@ -114,7 +114,7 @@ void STRXAudioProcessor::setCurrentProgram (int index)
 
 const String STRXAudioProcessor::getProgramName (int index)
 {
-    return {};
+    return "Default";
 }
 
 void STRXAudioProcessor::changeProgramName (int index, const String& newName)
@@ -140,8 +140,7 @@ void STRXAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     spec.numChannels = getTotalNumInputChannels();
 
     for (auto& ovs : oversample)
-        // if (ovs != nullptr)
-            ovs->initProcessing(samplesPerBlock);
+        ovs->initProcessing(samplesPerBlock);
 
     for (auto& ovs : oversample)
         ovs->reset();

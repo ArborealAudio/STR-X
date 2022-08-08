@@ -4,7 +4,7 @@ project(STR-X VERSION 1.2)
 
 find_package(JUCE CONFIG REQUIRED)
 
-juce_set_vst2_sdk_path("${VST2_SDK}")
+juce_set_vst2_sdk_path("$ENV{HOME}/vst2_sdk")
 
 juce_add_plugin(STR-X
     COMPANY_NAME "Arboreal Audio"
