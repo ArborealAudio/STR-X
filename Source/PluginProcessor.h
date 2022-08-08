@@ -31,6 +31,10 @@ public:
    #endif
 
     void processBlock (AudioBuffer<float>&, MidiBuffer&) override;
+    void processBlock (AudioBuffer<double>&, MidiBuffer&) override;
+    void processDoubleBuffer(AudioBuffer<double> &);
+
+    bool supportsDoublePrecisionProcessing() const override { return true; }
 
     //==============================================================================
     AudioProcessorEditor* createEditor() override;
@@ -63,12 +67,8 @@ public:
 
     AudioProcessorValueTreeState apvts;
 
-    std::array<dsp::Oversampling<float>, 3> oversample
-    { {
-        {dsp::Oversampling<float>(2)},
-        {dsp::Oversampling<float>(2)},
-        {dsp::Oversampling<float>(2)},
-    } };
+    std::array<dsp::Oversampling<double>, 3> oversample
+    {{dsp::Oversampling<double>(2)}, {dsp::Oversampling<double>(2)}, {dsp::Oversampling<double>(2)}};
     
     int lastUIWidth, lastUIHeight;
 
@@ -87,7 +87,9 @@ private:
 
     std::atomic<float>* hq = nullptr, *renderHQ = nullptr, *outVol_dB = nullptr, *legacyTone = nullptr;
 
-    AmpProcessor amp;
+    AudioBuffer<double> doubleBuffer;
+
+    AmpProcessor<double> amp;
 
     /*input * (max-min)+min*/
     float cookParams(float valueToCook, float minValue, float maxValue) 

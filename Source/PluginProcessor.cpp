@@ -44,15 +44,15 @@ STRXAudioProcessor::STRXAudioProcessor()
     apvts.addParameterListener("legacyTone", this);
 
     oversample[1].clearOversamplingStages();
-    oversample[1].addOversamplingStage(dsp::Oversampling<float>::filterHalfBandPolyphaseIIR,
+    oversample[1].addOversamplingStage(dsp::Oversampling<double>::filterHalfBandPolyphaseIIR,
         0.02, -90.0, 0.05, -90.0);
-    oversample[1].addOversamplingStage(dsp::Oversampling<float>::filterHalfBandPolyphaseIIR,
+    oversample[1].addOversamplingStage(dsp::Oversampling<double>::filterHalfBandPolyphaseIIR,
         0.02, -90.0, 0.05, -90.0);
 
     oversample[2].clearOversamplingStages();
-    oversample[2].addOversamplingStage(dsp::Oversampling<float>::filterHalfBandFIREquiripple,
+    oversample[2].addOversamplingStage(dsp::Oversampling<double>::filterHalfBandFIREquiripple,
         0.02, -90.0, 0.05, -90.0);
-    oversample[2].addOversamplingStage(dsp::Oversampling<float>::filterHalfBandFIREquiripple,
+    oversample[2].addOversamplingStage(dsp::Oversampling<double>::filterHalfBandFIREquiripple,
         0.02, -90.0, 0.05, -90.0);
 }
 
@@ -147,7 +147,8 @@ void STRXAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
         oversampler.reset();
 
     amp.prepare(spec, lastSampleRate);
-    
+
+    doubleBuffer.setSize(getTotalNumInputChannels(), samplesPerBlock);
 }
 
 void STRXAudioProcessor::releaseResources()
@@ -161,26 +162,14 @@ void STRXAudioProcessor::releaseResources()
 #ifndef JucePlugin_PreferredChannelConfigurations
 bool STRXAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
-  #if JucePlugin_IsMidiEffect
-    juce::ignoreUnused (layouts);
-    return true;
-  #else
-    // This is the place where you check if the layout is supported.
-    // In this template code we only support mono or stereo.
-    // Some plugin hosts, such as certain GarageBand versions, will only
-    // load plugins that support stereo bus layouts.
     if (layouts.getMainOutputChannelSet() != AudioChannelSet::mono()
      && layouts.getMainOutputChannelSet() != AudioChannelSet::stereo())
         return false;
 
-    // This checks if the input layout matches the output layout
-   #if ! JucePlugin_IsSynth
     if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
         return false;
-   #endif
 
     return true;
-  #endif
 }
 #endif
 
@@ -205,12 +194,12 @@ void STRXAudioProcessor::parameterChanged(const String& parameterID, float newVa
     if (parameterID == "renderHQ" || parameterID == "hq") {
         if (*renderHQ == true && isNonRealtime() == true) {
             osIndex = 2;
-            lastSampleRate = 4 * lastDownSampleRate;
+            lastSampleRate = 4.0 * lastDownSampleRate;
             isOversampled = true;
         }
         else if (*hq == true) {
             osIndex = 1;
-            lastSampleRate = 4 * lastDownSampleRate;
+            lastSampleRate = 4.0 * lastDownSampleRate;
             isOversampled = true;
         }
         else {
@@ -244,7 +233,7 @@ void STRXAudioProcessor::updateFilters()
 
     float bassCook = 0.0, midCook = 0.0, trebleCook = 0.0, presenceCook = 0.0;
 
-    if (*legacyTone == false) {
+    if (!*legacyTone) {
         // convert 0 - 1 value into a dB value
         bassCook = jmap(bassParam, -12.f, 12.f);
         midCook = jmap(midParam, -7.f, 7.f);
@@ -276,16 +265,37 @@ void STRXAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& m
 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
-    
+
+    doubleBuffer.makeCopyOf(buffer, true);
+
+    processDoubleBuffer(doubleBuffer);
+
+    buffer.makeCopyOf(doubleBuffer, true);
+}
+
+void STRXAudioProcessor::processBlock (AudioBuffer<double>& buffer, MidiBuffer&)
+{
+    ScopedNoDenormals noDenormals;
+    auto totalNumInputChannels  = getTotalNumInputChannels();
+    auto totalNumOutputChannels = getTotalNumOutputChannels();
+
+    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
+        buffer.clear (i, 0, buffer.getNumSamples());
+
+    processDoubleBuffer(buffer);
+}
+
+void STRXAudioProcessor::processDoubleBuffer(AudioBuffer<double>& buffer)
+{
     float out_raw = pow(10, (*outVol_dB / 20));
 
-    dsp::AudioBlock<float> block(buffer);
-    dsp::ProcessContextReplacing<float> context(block);
+    dsp::AudioBlock<double> block(buffer);
+    dsp::ProcessContextReplacing<double> context(block);
     const auto& inBlock = context.getInputBlock();
     auto& outBlock = context.getOutputBlock();
 
     auto osBlock = oversample[osIndex].processSamplesUp(inBlock);
-    dsp::ProcessContextReplacing<float> ampContext(osBlock);
+    dsp::ProcessContextReplacing<double> ampContext(osBlock);
 
     amp.processAmp(ampContext);
 
@@ -293,7 +303,6 @@ void STRXAudioProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer& m
     outBlock *= out_raw;
 
     setLatencySamples(oversample[osIndex].getLatencyInSamples());
-    
 }
 
 //==============================================================================

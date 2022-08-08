@@ -1,0 +1,53 @@
+cmake_minimum_required(VERSION 3.15)
+
+project(STR-X VERSION 1.2)
+
+find_package(JUCE CONFIG REQUIRED)
+
+juce_set_vst2_sdk_path("${VST2_SDK}")
+
+juce_add_plugin(STR-X
+    COMPANY_NAME "Arboreal Audio"
+    COPY_PLUGIN_AFTER_BUILD TRUE
+    PLUGIN_MANUFACTURER_CODE Arau
+    PLUGIN_CODE Strx
+    FORMATS AU VST3 VST
+    VST2_CATEGORY kPlugCategEffect
+    VST3_CATEGORY Fx
+    AU_MAIN_TYPE kAudioUnitType_Effect
+    PRODUCT_NAME "STR-X"
+    HARDENED_RUNTIME_ENABLE TRUE)
+
+juce_generate_juce_header(STR-X)
+
+target_sources(STR-X
+    PRIVATE
+    Source/PluginProcessor.cpp
+    Source/PluginEditor.cpp
+    Source/Background.cpp
+    Source/STR-X.h)
+
+target_compile_definitions(STR-X
+    PUBLIC
+    JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_VST3_CAN_REPLACE_VST2=0
+        JUCE_DISPLAY_SPLASH_SCREEN=0
+        JUCE_REPORT_APP_USAGE=0)
+
+juce_add_binary_data(BinaryData SOURCES
+    "Source/Resources/Arboreal Logo_2small.png"
+    "Source/Resources/STR-X.png")
+
+set_target_properties(BinaryData PROPERTIES
+    POSITION_INDEPENDENT_CODE TRUE)
+
+target_link_libraries(STR-X
+    PRIVATE
+        BinaryData
+        juce::juce_audio_utils
+        juce::juce_dsp
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+        juce::juce_recommended_warning_flags)
