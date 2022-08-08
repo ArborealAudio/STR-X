@@ -4,19 +4,24 @@ project(STR-X VERSION 1.2)
 
 find_package(JUCE CONFIG REQUIRED)
 
+add_subdirectory(modules/clap-juce-extensions EXCLUDE_FROM_ALL)
 juce_set_vst2_sdk_path("$ENV{HOME}/vst2_sdk")
 
 juce_add_plugin(STR-X
     COMPANY_NAME "Arboreal Audio"
     COPY_PLUGIN_AFTER_BUILD TRUE
     PLUGIN_MANUFACTURER_CODE Arau
-    PLUGIN_CODE Strx
+    PLUGIN_CODE STRX
     FORMATS AU VST3 VST
     VST2_CATEGORY kPlugCategEffect
     VST3_CATEGORY Fx
     AU_MAIN_TYPE kAudioUnitType_Effect
     PRODUCT_NAME "STR-X"
     HARDENED_RUNTIME_ENABLE TRUE)
+
+clap_juce_extensions_plugin(TARGET STR-X
+    CLAP_ID "com.ArborealAudio.STR-X.clap"
+    CLAP_FEATURES guitar amp)
 
 juce_generate_juce_header(STR-X)
 
@@ -25,7 +30,7 @@ target_sources(STR-X
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
     Source/Background.cpp
-    Source/STR-X.h)
+    Source/STR-X.hpp)
 
 target_compile_definitions(STR-X
     PUBLIC
