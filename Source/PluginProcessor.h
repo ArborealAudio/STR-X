@@ -9,7 +9,7 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "STR-X.h"
+#include "STR-X.hpp"
 
 //==============================================================================
 /**
@@ -67,12 +67,6 @@ public:
 
     AudioProcessorValueTreeState apvts;
 
-    // std::array<dsp::Oversampling<double>, 3> oversample
-    // { {
-    //     {dsp::Oversampling<double>(2)},
-    //     {dsp::Oversampling<double>(2, 2, dsp::Oversampling<double>::FilterType::filterHalfBandPolyphaseIIR, false, true)},
-    //     {dsp::Oversampling<double>(2, 2, dsp::Oversampling<double>::FilterType::filterHalfBandFIREquiripple, true, true)}
-    // } };
     OwnedArray<dsp::Oversampling<double>> oversample;
 
     int lastUIWidth, lastUIHeight;
