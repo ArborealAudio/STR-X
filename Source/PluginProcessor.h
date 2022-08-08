@@ -67,9 +67,14 @@ public:
 
     AudioProcessorValueTreeState apvts;
 
-    std::array<dsp::Oversampling<double>, 3> oversample
-    {{dsp::Oversampling<double>(2)}, {dsp::Oversampling<double>(2)}, {dsp::Oversampling<double>(2)}};
-    
+    // std::array<dsp::Oversampling<double>, 3> oversample
+    // { {
+    //     {dsp::Oversampling<double>(2)},
+    //     {dsp::Oversampling<double>(2, 2, dsp::Oversampling<double>::FilterType::filterHalfBandPolyphaseIIR, false, true)},
+    //     {dsp::Oversampling<double>(2, 2, dsp::Oversampling<double>::FilterType::filterHalfBandFIREquiripple, true, true)}
+    // } };
+    OwnedArray<dsp::Oversampling<double>> oversample;
+
     int lastUIWidth, lastUIHeight;
 
 private:
@@ -77,7 +82,7 @@ private:
     int osIndex = 0;
     double lastSampleRate = 0.0;
     double lastDownSampleRate = 0.0;
-    int numSamples = 0.0;
+    int numSamples = 0;
 
     bool isOversampled = false;
 
