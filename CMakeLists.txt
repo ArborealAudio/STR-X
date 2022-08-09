@@ -5,14 +5,24 @@ project(STR-X VERSION 1.2)
 find_package(JUCE CONFIG REQUIRED)
 
 add_subdirectory(modules/clap-juce-extensions EXCLUDE_FROM_ALL)
-juce_set_vst2_sdk_path("$ENV{HOME}/vst2_sdk")
+# juce_set_vst2_sdk_path("${VST2_SDK}")
+
+set(JUCE_FORMATS AU VST3)
+
+if (UNIX AND NOT APPLE)
+    list(APPEND JUCE_FORMATS LV2)
+endif()
+
+if (TARGET juce_vst2_sdk)
+    list(APPEND JUCE_FORMATS VST)
+endif()
 
 juce_add_plugin(STR-X
     COMPANY_NAME "Arboreal Audio"
     COPY_PLUGIN_AFTER_BUILD TRUE
     PLUGIN_MANUFACTURER_CODE Arau
     PLUGIN_CODE STRX
-    FORMATS AU VST3 VST
+    FORMATS ${JUCE_FORMATS}
     VST2_CATEGORY kPlugCategEffect
     VST3_CATEGORY Fx
     AU_MAIN_TYPE kAudioUnitType_Effect
