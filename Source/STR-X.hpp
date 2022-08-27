@@ -1,5 +1,4 @@
 #pragma once
-// #include <JuceHeader.h>
 
 template <typename Type>
 class TS9
@@ -13,17 +12,13 @@ public:
 		LPF.prepare(spec);
 		LPF_2.prepare(spec);
 
-		HPF.setType(dsp::FirstOrderTPTFilterType::highpass);
-		LPF.setType(dsp::FirstOrderTPTFilterType::lowpass);
-		LPF_2.setType(dsp::FirstOrderTPTFilterType::lowpass);
+		HPF.setType(strix::FilterType::firstOrderHighpass);
+		LPF.setType(strix::FilterType::firstOrderLowpass);
+		LPF_2.setType(strix::FilterType::firstOrderLowpass);
 
-		HPF.setCutoffFrequency(720.0);
-		LPF.setCutoffFrequency(5600.0);
-		LPF_2.setCutoffFrequency(723.4);
-
-		HPF.reset();
-		LPF.reset();
-		LPF_2.reset();
+		HPF.setCutoffFreq(720.0);
+		LPF.setCutoffFreq(5600.0);
+		LPF_2.setCutoffFreq(723.4);
 	}
 
 	void reset()
@@ -33,26 +28,31 @@ public:
 		LPF_2.reset();
 	}
 
-    inline void process(Type* x, float drive, int numSamples)
+    inline void process(double* x, double drive, int numSamples)
+    {
+        for (int i = 0; i < numSamples; ++i)
+            x[i] = processSample(x[i], drive);
+    }
+
+    inline void process(vec* x, vec drive, int numSamples)
     {
         for (int i = 0; i < numSamples; ++i)
             x[i] = processSample(x[i], drive);
     }
 
 private:
-	inline Type processSample(Type x, float drive)
+	inline double processSample(double x, double drive)
 	{
-
-		Type yn = 0.0;
-		xDry = x;
-		float currentGain = drive;
+		double yn = 0.0;
+		double xDry = x;
+		double currentGain = drive;
 
 		if (currentGain != lastGain)
 			lastGain = 0.001f * currentGain + (1.0 - 0.001f) * lastGain;
 		else
 			lastGain = drive;
 
-		k = 2 * drive;
+		k = 2.0 * drive;
 
 		x *= drive / 2;
 
@@ -69,10 +69,37 @@ private:
 		return yn;
 	}
 
-	Type xDry = 0.0;
-	float lastGain = 0.0;
+    inline vec processSample(vec x, vec drive)
+	{
+		vec yn = 0.0;
+		vec xDry = x;
+		vec currentGain = drive;
 
-	dsp::FirstOrderTPTFilter<Type> HPF, LPF, LPF_2;
+		if (xsimd::any(currentGain != lastGain))
+			lastGain = 0.001f * currentGain + (1.0 - 0.001f) * lastGain;
+		else
+			lastGain = drive;
+
+		k = 2.0 * drive;
+
+		x *= drive / 2;
+
+		x = HPF.processSample(0, x);
+
+		x = LPF.processSample(0, x);
+
+		x = xsimd::tanh(k * x) / xsimd::tanh(k);
+
+		x = LPF_2.processSample(0, x);
+
+		yn = ((x * (drive / 10.0)) + (xDry * (1.0 - (drive / 10.0))));
+
+		return yn;
+	}
+
+	Type lastGain = 0.0;
+
+	strix::SVTFilter<Type> HPF, LPF, LPF_2;
 
 	Type k = 0.0;
 };
@@ -87,17 +114,16 @@ public:
 
     void prepare(const dsp::ProcessSpec& spec) noexcept
 	{
-
 		inputHPF.prepare(spec);
 		dcRemoval.prepare(spec);
 		lowShelf.prepare(spec);
 
 		lr.prepare(spec);
-		lr.setType(dsp::LinkwitzRileyFilterType::lowpass);
+		lr.setType(strix::LRFilterType::lowpass);
 
-		dcRemoval.coefficients = (dsp::IIR::Coefficients<Type>::makeHighPass(spec.sampleRate, 10.0));
-		lowShelf.coefficients = (dsp::IIR::Coefficients<Type>::makeLowShelf(spec.sampleRate, 185.0, 1.8, 0.5));
-		inputHPF.coefficients = (dsp::IIR::Coefficients<Type>::makeHighPass(spec.sampleRate, 65.0));
+		dcRemoval.coefficients = (dsp::IIR::Coefficients<double>::makeHighPass(spec.sampleRate, 10.0));
+		lowShelf.coefficients = (dsp::IIR::Coefficients<double>::makeLowShelf(spec.sampleRate, 185.0, 1.8, 0.5));
+		inputHPF.coefficients = (dsp::IIR::Coefficients<double>::makeHighPass(spec.sampleRate, 65.0));
 	}
 
 	void reset()
@@ -127,7 +153,7 @@ public:
         }
 	}
 
-    inline void processHiGain(Type* in, float inputGain, int numSamples)
+    inline void processHiGain(Type* in, Type inputGain, int numSamples)
     {
         for (int i = 0; i < numSamples; ++i)
         {
@@ -135,7 +161,7 @@ public:
         }
     }
 
-    inline void processLoGain(Type* in, float inputGain, int numSamples)
+    inline void processLoGain(Type* in, Type inputGain, int numSamples)
     {
         for (int i = 0; i < numSamples; ++i)
         {
@@ -144,15 +170,15 @@ public:
     }
 	
 private:
-    inline Type processSampleHiGain(Type xn, float inputGain)
+    inline Type processSampleHiGain(Type xn, Type inputGain)
 	{
-	    float currentInputGain = inputGain;
-		if (currentInputGain != lastInputGain)
+	    Type currentInputGain = inputGain;
+		if (xsimd::any(currentInputGain != lastInputGain))
 			lastInputGain = 0.001f * currentInputGain + (1.0 - 0.001f) * lastInputGain;
 		else
 			lastInputGain = inputGain;
 			
-		float gain = lastInputGain * 8.f;
+		Type gain = lastInputGain * 8.f;
 		Type yn = 0.0, xnL = 0.0, xnH = 0.0;
 
 		xn *= gain;
@@ -176,15 +202,15 @@ private:
 		return yn;
 	}
 
-    inline Type processSampleLoGain(Type xn, float inputGain)
+    inline Type processSampleLoGain(Type xn, Type inputGain)
     {
-        float currentInputGain = inputGain;
-		if (currentInputGain != lastInputGain)
+        Type currentInputGain = inputGain;
+		if (xsimd::any(currentInputGain != lastInputGain))
 			lastInputGain = 0.001f * currentInputGain + (1.0 - 0.001f) * lastInputGain;
 		else
 			lastInputGain = inputGain;
 			
-		float gain = lastInputGain * 4.f;
+		Type gain = lastInputGain * 4.f;
 		Type yn = 0.0, xnL = 0.0, xnH = 0.0;
 
 		xn *= gain;
@@ -208,10 +234,10 @@ private:
 		return yn;
     }
 
-    inline Type hiGainSaturation (Type x)
+    inline double hiGainSaturation (double x)
     {
-        Type k = lastInputGain / 3.0;
-		Type nk = k / 0.9;
+        double k = lastInputGain / 3.0;
+		double nk = k / 0.9;
 
         if (x > 0.0)
         {
@@ -225,7 +251,7 @@ private:
         return x;
     }
 
-    inline Type loGainSaturation(Type x)
+    inline double loGainSaturation(double x)
     {
         if (x > 0.0)
         {
@@ -239,11 +265,24 @@ private:
         return x;
     }
 
-	dsp::LinkwitzRileyFilter<Type> lr;
+    inline vec hiGainSaturation (vec x)
+    {
+        vec k = lastInputGain / 3.0;
+		vec nk = k / 0.9;
+
+        return xsimd::select(x > 0.0, xsimd::atan(k * x) / xsimd::atan(k), 0.9 * xsimd::atan(nk * x) / xsimd::atan(nk));
+    }
+
+    inline vec loGainSaturation(vec x)
+    {
+        return xsimd::select(x > 0.0, (x / (1.0 + xsimd::abs(x))) * 2.0, (2.0 * x) / (1.0 + xsimd::abs(x * 2.0)));
+    }
+
+	strix::LinkwitzRileyFilter<Type> lr;
 
 	dsp::IIR::Filter<Type> inputHPF, dcRemoval, lowShelf;
 
-    float lastInputGain = 0.0;
+    Type lastInputGain = 0.0;
 };
 
 //========================================================
@@ -257,8 +296,7 @@ public:
 	void prepare(const dsp::ProcessSpec& spec) noexcept
 	{
 		dcRemoval.prepare(spec);
-		dcRemoval.coefficients = (dsp::IIR::Coefficients<Type>::makeHighPass(spec.sampleRate, 10.0));
-		dcRemoval.reset();
+		dcRemoval.coefficients = (dsp::IIR::Coefficients<double>::makeHighPass(spec.sampleRate, 10.0));
 	}
 
 	void reset()
@@ -266,27 +304,27 @@ public:
 		dcRemoval.reset();
 	}
 
-    inline void processHiGain(Type* in, float gain, int numSamples)
+    inline void processHiGain(Type* in, Type gain, int numSamples)
     {
         for (int i = 0; i < numSamples; ++i)
             in[i] = processSampleHiGain(in[i], gain);
     }
 
-    inline void processLoGain(Type* in, float gain, int numSamples)
+    inline void processLoGain(Type* in, Type gain, int numSamples)
     {
         for (int i = 0; i < numSamples; ++i)
             in[i] = processSampleLoGain(in[i], gain);
     }
 
-	inline Type processSampleHiGain(Type xn, float outGain)
+	inline Type processSampleHiGain(Type xn, Type outGain)
 	{
-	    float currentGain = outGain;
-		if (currentGain != lastGain)
+	    Type currentGain = outGain;
+		if (xsimd::any(currentGain != lastGain))
 			lastGain = 0.001f * currentGain + (1.0 - 0.001f) * lastGain;
 		else
 			lastGain = outGain;
 	    
-		float gain = lastGain * 0.6;
+		Type gain = lastGain * 0.6;
 		Type yn = 0.0;
 
 		xn *= gain;
@@ -309,15 +347,15 @@ public:
 		return yn;
 	}
 
-    inline Type processSampleLoGain(Type xn, float outGain)
+    inline Type processSampleLoGain(Type xn, Type outGain)
 	{
-	    float currentGain = outGain;
-		if (currentGain != lastGain)
+	    Type currentGain = outGain;
+		if (xsimd::any(currentGain != lastGain))
 			lastGain = 0.001f * currentGain + (1.0 - 0.001f) * lastGain;
 		else
 			lastGain = outGain;
 	    
-		float gain = lastGain * 0.6;
+		Type gain = lastGain * 0.6;
 		Type yn = 0.0;
 
 		xn *= gain;
@@ -343,9 +381,9 @@ public:
 private:
 	dsp::IIR::Filter<Type> dcRemoval;
 
-    float lastGain = 0.0;
+    Type lastGain = 0.0;
 
-	inline Type waveShaper(Type xn, Type g, Type Ln, Type Lp)
+	inline double waveShaper(double xn, Type g, Type Ln, Type Lp)
 	{
 		Type yn = 0.0;
 		if (xn <= 0)
@@ -354,6 +392,11 @@ private:
 			yn = (g * xn) / (1.0 + ((g * xn) / Lp));
 		return yn;
 	}
+
+    inline vec waveShaper(vec xn, Type g, Type Ln, Type Lp)
+    {
+        return xsimd::select(xn <= 0.0, (g * xn) / (1.0 - ((g * xn) / Ln)), (g * xn) / (1.0 + ((g * xn) / Lp)));
+    }
 };
 
 //=====================================================================
@@ -363,7 +406,7 @@ class AmpProcessor
 {
     std::atomic<float> *inputGain, *tsXGain, *bright, *outGain, *channel;
 
-	dsp::IIR::Filter<double> highPass, bandPass, lowPass,
+	dsp::IIR::Filter<T> highPass, bandPass, lowPass,
     bass, mid, treble, presence, brightShelf;
 
     AudioProcessorValueTreeState &vts;
@@ -443,7 +486,8 @@ public:
 		presence.coefficients = (dsp::IIR::Coefficients<double>::makePeakFilter(sampleRate, 4000.f, 0.6f, presenceGain));
 	}
 
-	inline void processAmp(dsp::AudioBlock<double>& block)
+    template <typename Block>
+	inline void processAmp(Block& block)
 	{
         auto tsX = tsXGain->load();
         bool b = (bool)bright->load();
@@ -451,7 +495,6 @@ public:
         auto out = outGain->load();
 
         auto in = block.getChannelPointer(0);
-        auto R = block.getChannelPointer(1);
 
         if (tsX > 0.f)
             ts9.process(in, tsX, block.getNumSamples());
@@ -460,7 +503,7 @@ public:
             preAmp.processLoGain(in, inGain, block.getNumSamples());
         else
             preAmp.processHiGain(in, inGain, block.getNumSamples());
-        
+
         for (int i = 0; i < block.getNumSamples(); ++i)
         {
             in[i] = lowPass.processSample(in[i]);
@@ -481,7 +524,6 @@ public:
         else
             powerAmp.processHiGain(in, out, block.getNumSamples());
     }
-
 
 	TS9<T> ts9;
 

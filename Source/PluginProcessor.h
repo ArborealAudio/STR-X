@@ -11,6 +11,10 @@
 #include <JuceHeader.h>
 #include "STR-X.hpp"
 
+#if NDEBUG
+    #define USE_SIMD 1
+#endif
+
 //==============================================================================
 /**
 */
@@ -88,7 +92,9 @@ private:
 
     AudioBuffer<double> doubleBuffer;
 
-    AmpProcessor<double> amp;
+    AmpProcessor<vec> amp;
+
+    strix::SIMD<double, dsp::AudioBlock<double>, strix::AudioBlock<vec>> simd;
 
     /*input * (max-min)+min*/
     float cookParams(float valueToCook, float minValue, float maxValue) 

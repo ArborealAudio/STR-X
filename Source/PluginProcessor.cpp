@@ -149,6 +149,8 @@ void STRXAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     amp.preAmp.updateCrossover(*apvts.getRawParameterValue("mode"));
 
     doubleBuffer.setSize(getTotalNumInputChannels(), samplesPerBlock);
+
+    simd.setInterleavedBlockSize(spec.numChannels, samplesPerBlock);
 }
 
 void STRXAudioProcessor::releaseResources()
@@ -297,7 +299,18 @@ void STRXAudioProcessor::processDoubleBuffer(AudioBuffer<double>& buffer)
 
     auto osBlock = oversample[osIndex]->processSamplesUp(block);
 
-    amp.processAmp(osBlock);
+#if USE_SIMD
+    auto simdBlock = simd.interleaveBlock(osBlock);
+    auto &&processBlock = simdBlock;
+#else
+    auto &&processBlock = osBlock;
+#endif
+
+    amp.processAmp(processBlock);
+
+#if USE_SIMD
+    simd.deinterleaveBlock(processBlock);
+#endif
 
     oversample[osIndex]->processSamplesDown(block);
     block *= out_raw;

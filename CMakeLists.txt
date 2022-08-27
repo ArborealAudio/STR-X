@@ -5,7 +5,7 @@ project(STR-X VERSION 1.2)
 find_package(JUCE CONFIG REQUIRED)
 
 add_subdirectory(modules/clap-juce-extensions EXCLUDE_FROM_ALL)
-# juce_set_vst2_sdk_path("${VST2_SDK}")
+juce_set_vst2_sdk_path("$ENV{HOME}/vst2_sdk")
 
 set(JUCE_FORMATS AU VST3)
 
@@ -17,15 +17,8 @@ if (TARGET juce_vst2_sdk)
     list(APPEND JUCE_FORMATS VST)
 endif()
 
-set(JUCE_FORMATS AU VST3)
-
-if (TARGET juce_vst2_sdk)
-    list(APPEND VST)
-endif()
-
-if (UNIX AND NOT APPLE)
-    list(APPEND LV2)
-endif()
+juce_add_modules(
+    "$ENV{HOME}/modules/Arbor_modules")
 
 juce_add_plugin(STR-X
     COMPANY_NAME "Arboreal Audio"
@@ -75,6 +68,7 @@ target_link_libraries(STR-X
         BinaryData
         juce::juce_audio_utils
         juce::juce_dsp
+        Arbor_modules
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
