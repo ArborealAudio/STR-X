@@ -20,7 +20,8 @@ STRXAudioProcessor::STRXAudioProcessor()
                       #endif
                        .withOutput ("Output", AudioChannelSet::stereo(), true)
                      #endif
-                       ), apvts(*this, nullptr, "Parameters", createParameters())
+                       ), apvts(*this, nullptr, "Parameters", createParameters()),
+                       amp(apvts)
                         
 #endif
 {
@@ -32,20 +33,17 @@ STRXAudioProcessor::STRXAudioProcessor()
     lastUIHeight = 500;
     hq = apvts.getRawParameterValue("hq");    
     renderHQ = apvts.getRawParameterValue("renderHQ");
-    apvts.addParameterListener("hq", this);
-    apvts.addParameterListener("renderHQ", this);
-    amp.inputGain = apvts.getRawParameterValue("gain");
-    amp.outGain = apvts.getRawParameterValue("master");
-    amp.tsXGain = apvts.getRawParameterValue("tsXgain");
-    amp.bright = apvts.getRawParameterValue("bright");
-    amp.crossover = apvts.getRawParameterValue("mode");
     outVol_dB = apvts.getRawParameterValue("outVol");
     legacyTone = apvts.getRawParameterValue("legacyTone");
     apvts.addParameterListener("bass", this);
     apvts.addParameterListener("mid", this);
     apvts.addParameterListener("treble", this);
     apvts.addParameterListener("presence", this);
+    apvts.addParameterListener("mode", this);
+    apvts.addParameterListener("channel", this);
     apvts.addParameterListener("legacyTone", this);
+    apvts.addParameterListener("hq", this);
+    apvts.addParameterListener("renderHQ", this);
 }
 
 STRXAudioProcessor::~STRXAudioProcessor()
@@ -56,6 +54,8 @@ STRXAudioProcessor::~STRXAudioProcessor()
     apvts.removeParameterListener("mid", this);
     apvts.removeParameterListener("treble", this);
     apvts.removeParameterListener("presence", this);
+    apvts.removeParameterListener("mode", this);
+    apvts.removeParameterListener("channel", this);
     apvts.removeParameterListener("legacyTone", this);
 }
 
@@ -130,12 +130,12 @@ void STRXAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     updateOversample();
 
     if (isOversampled)
-        lastSampleRate = sampleRate * 4;
+        lastSampleRate = sampleRate * 4.0;
     else
         lastSampleRate = sampleRate;
 
     dsp::ProcessSpec spec;
-    spec.maximumBlockSize = samplesPerBlock;
+    spec.maximumBlockSize = samplesPerBlock * (isOversampled ? 4.0 : 1.0);
     spec.sampleRate = lastSampleRate;
     spec.numChannels = getTotalNumInputChannels();
 
@@ -145,7 +145,8 @@ void STRXAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     for (auto& ovs : oversample)
         ovs->reset();
 
-    amp.prepare(spec, lastSampleRate);
+    amp.prepare(spec);
+    amp.preAmp.updateCrossover(*apvts.getRawParameterValue("mode"));
 
     doubleBuffer.setSize(getTotalNumInputChannels(), samplesPerBlock);
 }
@@ -212,10 +213,14 @@ void STRXAudioProcessor::parameterChanged(const String& parameterID, float newVa
         newSpec.maximumBlockSize = numSamples;
         newSpec.numChannels = getTotalNumInputChannels();
 
-        amp.prepare(newSpec, lastSampleRate);
-    }
+        amp.prepare(newSpec);
 
-    updateFilters();
+        updateFilters();
+    }
+    else if (parameterID == "bass" || parameterID == "mid" || parameterID == "treble" || parameterID == "presence")
+        updateFilters();
+    else if (parameterID == "mode")
+        amp.preAmp.updateCrossover(*apvts.getRawParameterValue("mode"));
 }
 
 void STRXAudioProcessor::updateFilters()
@@ -289,18 +294,13 @@ void STRXAudioProcessor::processDoubleBuffer(AudioBuffer<double>& buffer)
     float out_raw = std::pow(10, (*outVol_dB * 0.05f));
 
     dsp::AudioBlock<double> block(buffer);
-    dsp::ProcessContextReplacing<double> context(block);
 
-    const auto& inBlock = context.getInputBlock();
-    auto& outBlock = context.getOutputBlock();
+    auto osBlock = oversample[osIndex]->processSamplesUp(block);
 
-    auto osBlock = oversample[osIndex]->processSamplesUp(inBlock);
-    dsp::ProcessContextReplacing<double> ampContext(osBlock);
+    amp.processAmp(osBlock);
 
-    amp.processAmp(ampContext);
-
-    oversample[osIndex]->processSamplesDown(outBlock);
-    outBlock *= out_raw;
+    oversample[osIndex]->processSamplesDown(block);
+    block *= out_raw;
 
     setLatencySamples(oversample[osIndex]->getLatencyInSamples());
 }
@@ -356,24 +356,17 @@ AudioProcessorValueTreeState::ParameterLayout STRXAudioProcessor::createParamete
 
     std::vector<std::unique_ptr<RangedAudioParameter>> params;
 
-    params.push_back(std::make_unique<AudioParameterFloat>
-        (ParameterID("gain", 1), "Preamp Gain", gainRange, 3.f));
-    params.push_back(std::make_unique <AudioParameterChoice>
-        (ParameterID("mode", 1), "Mode", juce::StringArray{ "Thick", "Normal", "Open" }, 1));
-    params.push_back(std::make_unique <AudioParameterFloat>
-        (ParameterID("bass", 1), "Bass", nRange, 5.f));
-    params.push_back(std::make_unique <AudioParameterFloat>
-        (ParameterID("mid", 1), "Mid", nRange, 5.f));
-    params.push_back(std::make_unique <AudioParameterFloat>
-        (ParameterID("treble", 1), "Treble", nRange, 5.f));
-    params.push_back(std::make_unique <AudioParameterFloat>
-        (ParameterID("presence", 1), "Presence", nRange, 5.f));
+    params.push_back(std::make_unique<AudioParameterFloat>(ParameterID("gain", 1), "Preamp Gain", gainRange, 3.f));
+    params.push_back(std::make_unique <AudioParameterChoice>(ParameterID("mode", 1), "Mode", juce::StringArray{ "Thick", "Normal", "Open" }, 1));
+    params.push_back(std::make_unique <AudioParameterFloat>(ParameterID("bass", 1), "Bass", nRange, 5.f));
+    params.push_back(std::make_unique <AudioParameterFloat>(ParameterID("mid", 1), "Mid", nRange, 5.f));
+    params.push_back(std::make_unique <AudioParameterFloat>(ParameterID("treble", 1), "Treble", nRange, 5.f));
+    params.push_back(std::make_unique <AudioParameterFloat>(ParameterID("presence", 1), "Presence", nRange, 5.f));
     params.push_back(std::make_unique<AudioParameterBool>(ParameterID("bright", 1), "Bright", false));
     params.push_back(std::make_unique <AudioParameterFloat>(ParameterID("tsXgain", 1), "X Gain", 0.f, 10.0f, 0.f));
-    params.push_back(std::make_unique <AudioParameterFloat>
-        (ParameterID("master", 1), "Power Amp Gain", gainRange, 5.f));
-    params.push_back(std::make_unique<AudioParameterFloat>
-        (ParameterID("outVol", 1), "Output Volume", outVolRange, 0.0));
+    params.push_back(std::make_unique <AudioParameterFloat>(ParameterID("master", 1), "Power Amp Gain", gainRange, 5.f));
+    params.push_back(std::make_unique<AudioParameterChoice>(ParameterID("channel", 1), "Channel", StringArray{"Lo", "Hi"}, 1));
+    params.push_back(std::make_unique<AudioParameterFloat>(ParameterID("outVol", 1), "Output Volume", outVolRange, 0.0));
     params.push_back(std::make_unique<AudioParameterBool>(ParameterID("hq", 1), "HQ", false));    
     params.push_back(std::make_unique<AudioParameterBool>(ParameterID("renderHQ", 1), "Render HQ", false));
     params.push_back(std::make_unique<AudioParameterBool>(ParameterID("legacyTone", 1), "Use Legacy Tone Controls", false));

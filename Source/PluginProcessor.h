@@ -84,7 +84,7 @@ private:
 
     NormalisableRange<float> nRange, outVolRange;
 
-    std::atomic<float>* hq = nullptr, *renderHQ = nullptr, *outVol_dB = nullptr, *legacyTone = nullptr;
+    std::atomic<float>* hq, *renderHQ, *outVol_dB, *legacyTone;
 
     AudioBuffer<double> doubleBuffer;
 

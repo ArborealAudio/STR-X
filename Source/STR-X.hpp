@@ -33,7 +33,14 @@ public:
 		LPF_2.reset();
 	}
 
-	inline Type processAudioSample(Type x, float drive)
+    inline void process(Type* x, float drive, int numSamples)
+    {
+        for (int i = 0; i < numSamples; ++i)
+            x[i] = processSample(x[i], drive);
+    }
+
+private:
+	inline Type processSample(Type x, float drive)
 	{
 
 		Type yn = 0.0;
@@ -62,7 +69,6 @@ public:
 		return yn;
 	}
 
-private:
 	Type xDry = 0.0;
 	float lastGain = 0.0;
 
@@ -79,27 +85,19 @@ class PreAmp
 public:
     PreAmp() = default;
 
-    void prepare(const dsp::ProcessSpec& spec, double sampleRate) noexcept
+    void prepare(const dsp::ProcessSpec& spec) noexcept
 	{
-		lowBand.prepare(spec);
-		hiBand.prepare(spec);
 
 		inputHPF.prepare(spec);
 		dcRemoval.prepare(spec);
 		lowShelf.prepare(spec);
 
-		lowBand.setType(dsp::LinkwitzRileyFilterType::lowpass);
-		hiBand.setType(dsp::LinkwitzRileyFilterType::highpass);
+		lr.prepare(spec);
+		lr.setType(dsp::LinkwitzRileyFilterType::lowpass);
 
-		dcRemoval.coefficients = (dsp::IIR::Coefficients<Type>::makeHighPass(sampleRate, 10.0));
-		lowShelf.coefficients = (dsp::IIR::Coefficients<Type>::makeLowShelf(sampleRate, 185.0, 1.8, 0.5));
-		inputHPF.coefficients = (dsp::IIR::Coefficients<Type>::makeHighPass(sampleRate, 65.0));
-
-		inputHPF.reset();
-		dcRemoval.reset();
-		lowShelf.reset();
-		lowBand.reset();
-		hiBand.reset();
+		dcRemoval.coefficients = (dsp::IIR::Coefficients<Type>::makeHighPass(spec.sampleRate, 10.0));
+		lowShelf.coefficients = (dsp::IIR::Coefficients<Type>::makeLowShelf(spec.sampleRate, 185.0, 1.8, 0.5));
+		inputHPF.coefficients = (dsp::IIR::Coefficients<Type>::makeHighPass(spec.sampleRate, 65.0));
 	}
 
 	void reset()
@@ -107,29 +105,46 @@ public:
 		inputHPF.reset();
 		dcRemoval.reset();
 		lowShelf.reset();
-		lowBand.reset();
-		hiBand.reset();
+		lr.reset();
 	}
 
 	inline void updateCrossover(int crossover)
 	{
-		auto mode = crossover;
-
-		if (mode == 0) {
-			lowBand.setCutoffFrequency(100.0);
-			hiBand.setCutoffFrequency(100.0);
-		}
-		else if (mode == 1) {
-			lowBand.setCutoffFrequency(250.0);
-			hiBand.setCutoffFrequency(250.0);
-		}
-		else {
-			lowBand.setCutoffFrequency(400.0);
-			hiBand.setCutoffFrequency(400.0);
-		}
+        switch (crossover)
+        {
+		case 0:
+			lr.setCutoffFrequency(100.0);
+            break;
+        case 1:
+            lr.setCutoffFrequency(250.0);
+            break;
+        case 2:
+			lr.setCutoffFrequency(400.0);
+            break;
+        default:
+            lr.setCutoffFrequency(250.0);
+            break;
+        }
 	}
 
-	inline Type processAudioSample(Type xn, float inputGain)
+    inline void processHiGain(Type* in, float inputGain, int numSamples)
+    {
+        for (int i = 0; i < numSamples; ++i)
+        {
+            in[i] = processSampleHiGain(in[i], inputGain);
+        }
+    }
+
+    inline void processLoGain(Type* in, float inputGain, int numSamples)
+    {
+        for (int i = 0; i < numSamples; ++i)
+        {
+            in[i] = processSampleLoGain(in[i], inputGain);
+        }
+    }
+	
+private:
+    inline Type processSampleHiGain(Type xn, float inputGain)
 	{
 	    float currentInputGain = inputGain;
 		if (currentInputGain != lastInputGain)
@@ -137,39 +152,22 @@ public:
 		else
 			lastInputGain = inputGain;
 			
-		float gain = lastInputGain * 8;
-		Type yn = 0.0;
-		Type k = lastInputGain / 3.0;
-		Type negK = k / 0.9;
+		float gain = lastInputGain * 8.f;
+		Type yn = 0.0, xnL = 0.0, xnH = 0.0;
 
 		xn *= gain;
 
-		Type xnL = lowBand.processSample(0, xn);
-		Type xnH = hiBand.processSample(0, xn);
+        lr.processSample(0, xn, xnL, xnH);
 
-		xnL = inputHPF.processSample(xnL);
+        xnL = inputHPF.processSample(xnL);
 
 		// high band distortion
-		if (xnH > 0.0)
-		{
-			xnH = std::atan(k * xnH) / std::atan(k);
-		}
-		else
-		{
-			xnH = 0.9 * (std::atan(negK * xnH) / std::atan(negK));
-		}
+        xnH = hiGainSaturation(xnH);
 
-		// low band distortion
-		if (xnL > 0.0)
-		{
-			xnL = std::atan(k * xnL) / std::atan(k);
-		}
-		else
-		{
-			xnL = 0.9 * (std::atan(negK * xnL) / std::atan(negK));
-		}
+        // low band distortion
+        xnL = hiGainSaturation(xnL);
 
-		yn = xnL + xnH;
+        yn = xnL + xnH;
 
 		yn = dcRemoval.processSample(yn);
 
@@ -178,14 +176,74 @@ public:
 		return yn;
 	}
 
-	dsp::LinkwitzRileyFilter<Type> lowBand, hiBand;
+    inline Type processSampleLoGain(Type xn, float inputGain)
+    {
+        float currentInputGain = inputGain;
+		if (currentInputGain != lastInputGain)
+			lastInputGain = 0.001f * currentInputGain + (1.0 - 0.001f) * lastInputGain;
+		else
+			lastInputGain = inputGain;
+			
+		float gain = lastInputGain * 4.f;
+		Type yn = 0.0, xnL = 0.0, xnH = 0.0;
+
+		xn *= gain;
+
+        lr.processSample(0, xn, xnL, xnH);
+
+        // xnL = inputHPF.processSample(xnL);
+
+		// high band distortion
+        xnH = loGainSaturation(xnH);
+
+        // low band distortion
+        xnL = loGainSaturation(xnL);
+
+        yn = xnL + xnH;
+
+		yn = dcRemoval.processSample(yn);
+
+		yn = lowShelf.processSample(yn);
+
+		return yn;
+    }
+
+    inline Type hiGainSaturation (Type x)
+    {
+        Type k = lastInputGain / 3.0;
+		Type nk = k / 0.9;
+
+        if (x > 0.0)
+        {
+            x = std::atan(k * x) / std::atan(k);
+        }
+        else
+        {
+            x = 0.9 * std::atan(nk * x) / std::atan(nk);
+        }
+
+        return x;
+    }
+
+    inline Type loGainSaturation(Type x)
+    {
+        if (x > 0.0)
+        {
+            x = (x / (1.0 + std::abs(x))) * 2.0;
+        }
+        else
+        {
+            x = (2.0 * x) / (1.0 + std::abs(x * 2.0));
+        }
+
+        return x;
+    }
+
+	dsp::LinkwitzRileyFilter<Type> lr;
 
 	dsp::IIR::Filter<Type> inputHPF, dcRemoval, lowShelf;
-	
-private:
 
     float lastInputGain = 0.0;
-
 };
 
 //========================================================
@@ -196,12 +254,10 @@ class ClassBValvePair
 public:
     ClassBValvePair() = default;
 
-public:
-
-	void prepare(const dsp::ProcessSpec& spec, double sampleRate) noexcept
+	void prepare(const dsp::ProcessSpec& spec) noexcept
 	{
 		dcRemoval.prepare(spec);
-		dcRemoval.coefficients = (dsp::IIR::Coefficients<Type>::makeHighPass(sampleRate, 10.0));
+		dcRemoval.coefficients = (dsp::IIR::Coefficients<Type>::makeHighPass(spec.sampleRate, 10.0));
 		dcRemoval.reset();
 	}
 
@@ -210,7 +266,19 @@ public:
 		dcRemoval.reset();
 	}
 
-	inline Type processAudioSample(Type xn, float outGain)
+    inline void processHiGain(Type* in, float gain, int numSamples)
+    {
+        for (int i = 0; i < numSamples; ++i)
+            in[i] = processSampleHiGain(in[i], gain);
+    }
+
+    inline void processLoGain(Type* in, float gain, int numSamples)
+    {
+        for (int i = 0; i < numSamples; ++i)
+            in[i] = processSampleLoGain(in[i], gain);
+    }
+
+	inline Type processSampleHiGain(Type xn, float outGain)
 	{
 	    float currentGain = outGain;
 		if (currentGain != lastGain)
@@ -238,14 +306,42 @@ public:
 
 		yn *= 0.1767;
 
-		dcRemoval.snapToZero();
+		return yn;
+	}
+
+    inline Type processSampleLoGain(Type xn, float outGain)
+	{
+	    float currentGain = outGain;
+		if (currentGain != lastGain)
+			lastGain = 0.001f * currentGain + (1.0 - 0.001f) * lastGain;
+		else
+			lastGain = outGain;
+	    
+		float gain = lastGain * 0.6;
+		Type yn = 0.0;
+
+		xn *= gain;
+
+		// --- asymmetrical waveshaping
+		Type yn_pos = waveShaper(xn, 1.70, 23.6, 2.01);
+		Type yn_neg = waveShaper(xn, 1.70, 2.01, 23.6);
+
+		yn_pos = dcRemoval.processSample(yn_pos);
+		yn_neg = dcRemoval.processSample(yn_neg);
+
+		// --- symmetrical waveshaping
+		yn_pos = waveShaper(yn_pos, 2.0, 2.01, 2.01);
+		yn_neg = waveShaper(yn_neg, 2.0, 2.01, 2.01);
+
+		yn = yn_pos + yn_neg;
+
+		yn *= 0.1767;
 
 		return yn;
 	}
 
-	dsp::IIR::Filter<Type> dcRemoval;
-
 private:
+	dsp::IIR::Filter<Type> dcRemoval;
 
     float lastGain = 0.0;
 
@@ -265,47 +361,41 @@ private:
 template <typename T>
 class AmpProcessor
 {
+    std::atomic<float> *inputGain, *tsXGain, *bright, *outGain, *channel;
+
+	dsp::IIR::Filter<double> highPass, bandPass, lowPass,
+    bass, mid, treble, presence, brightShelf;
+
+    AudioProcessorValueTreeState &vts;
+
 public:
-    AmpProcessor() = default;
+    AmpProcessor(AudioProcessorValueTreeState& v) : vts(v)
+    {
+        inputGain = vts.getRawParameterValue("gain");
+        outGain = vts.getRawParameterValue("master");
+        tsXGain = vts.getRawParameterValue("tsXgain");
+        bright = vts.getRawParameterValue("bright");
+        channel = vts.getRawParameterValue("channel");
+    }
 
-    std::atomic<float>* inputGain = nullptr;
-	std::atomic<float>* crossover = nullptr;
-	std::atomic<float>* outGain = nullptr;
-	std::atomic<float>* tsXGain = nullptr;
-	std::atomic<float>* bright = nullptr;
-
-	dsp::IIR::Filter<T> highPass, bandPass, lowPass;
-
-	dsp::IIR::Filter<T> bass, mid, treble, presence, brightShelf;
-
-
-	void prepare(const dsp::ProcessSpec& spec, double sampleRate) noexcept
+	void prepare(const dsp::ProcessSpec& spec) noexcept
 	{
 		ts9.prepare(spec);
 		highPass.prepare(spec);
 		bandPass.prepare(spec);
 		lowPass.prepare(spec);
-		preAmp.prepare(spec, sampleRate);
+		preAmp.prepare(spec);
 		bass.prepare(spec);
 		mid.prepare(spec);
 		treble.prepare(spec);
 		presence.prepare(spec);
 		brightShelf.prepare(spec);
-		powerAmp.prepare(spec, sampleRate);
+		powerAmp.prepare(spec);
 
-		highPass.coefficients = (dsp::IIR::Coefficients<T>::makeFirstOrderHighPass(sampleRate, 750.f));
-		bandPass.coefficients = (dsp::IIR::Coefficients<T>::makeBandPass(sampleRate, 80.f));
-		lowPass.coefficients = (dsp::IIR::Coefficients<T>::makeFirstOrderLowPass(sampleRate, 10000.f));
-		brightShelf.coefficients = (dsp::IIR::Coefficients<T>::makeHighShelf(sampleRate, 2500.0, 0.707, 2.0));
-
-		highPass.reset();
-		bandPass.reset();
-		lowPass.reset();
-		bass.reset();
-		mid.reset();
-		treble.reset();
-		presence.reset();
-		brightShelf.reset();
+		highPass.coefficients = (dsp::IIR::Coefficients<double>::makeFirstOrderHighPass(spec.sampleRate, 750.f));
+		bandPass.coefficients = (dsp::IIR::Coefficients<double>::makeBandPass(spec.sampleRate, 80.f));
+		lowPass.coefficients = (dsp::IIR::Coefficients<double>::makeFirstOrderLowPass(spec.sampleRate, 10000.f));
+		brightShelf.coefficients = (dsp::IIR::Coefficients<double>::makeHighShelf(spec.sampleRate, 2500.0, 0.707, 2.0));
 	}
 
 	void reset()
@@ -326,74 +416,71 @@ public:
 	inline void updateFilters(double sampleRate, float bassGain, float midGain, float trebleGain,
 		float presenceGain) noexcept
 	{
-	    float currentBass = bassGain;
-		float currentMid = midGain;
-		float currentTreble = trebleGain;
-		float currentPres = presenceGain;
+	    // float currentBass = bassGain;
+		// float currentMid = midGain;
+		// float currentTreble = trebleGain;
+		// float currentPres = presenceGain;
 
-		if (currentBass != lastBass)
-			currentBass = 0.1f * currentBass + (1.0 - 0.1f) * lastBass;
-		lastBass = currentBass;
+		// if (currentBass != lastBass)
+		// 	currentBass = 0.1f * currentBass + (1.0 - 0.1f) * lastBass;
+		// lastBass = currentBass;
 
-		if (currentMid != lastMid)
-			currentMid = 0.1f * currentMid + (1.0 - 0.1f) * lastMid;
-		lastMid = currentMid;
+		// if (currentMid != lastMid)
+		// 	currentMid = 0.1f * currentMid + (1.0 - 0.1f) * lastMid;
+		// lastMid = currentMid;
 
-		if (currentTreble != lastTreble)
-			currentTreble = 0.1f * currentTreble + (1.0 - 0.1f) * lastTreble;
-		lastTreble = currentTreble;
+		// if (currentTreble != lastTreble)
+		// 	currentTreble = 0.1f * currentTreble + (1.0 - 0.1f) * lastTreble;
+		// lastTreble = currentTreble;
 
-		if (currentPres != lastPres)
-			currentPres = 0.1f * currentPres + (1.0 - 0.1f) * lastPres;
-		lastPres = currentPres;
+		// if (currentPres != lastPres)
+		// 	currentPres = 0.1f * currentPres + (1.0 - 0.1f) * lastPres;
+		// lastPres = currentPres;
 	    
-		*bass.coefficients = *(dsp::IIR::Coefficients<T>::makeLowShelf(sampleRate, 150.f, 0.606f,
-			bassGain));
-		*mid.coefficients = *(dsp::IIR::Coefficients<T>::makePeakFilter(sampleRate, 600.f, 0.5f,
-			midGain));
-		*treble.coefficients = *(dsp::IIR::Coefficients<T>::makeHighShelf(sampleRate, 1500.f, 0.3f,
-			trebleGain));
-		*presence.coefficients = *(dsp::IIR::Coefficients<T>::makePeakFilter(sampleRate, 4000.f, 0.6f,
-			presenceGain));
+		*bass.coefficients = (dsp::IIR::ArrayCoefficients<double>::makeLowShelf(sampleRate, 150.f, 0.606f, bassGain));
+		*mid.coefficients = (dsp::IIR::ArrayCoefficients<double>::makePeakFilter(sampleRate, 600.f, 0.5f, midGain));
+		*treble.coefficients = (dsp::IIR::ArrayCoefficients<double>::makeHighShelf(sampleRate, 1500.f, 0.3f, trebleGain));
+		*presence.coefficients = (dsp::IIR::ArrayCoefficients<double>::makePeakFilter(sampleRate, 4000.f, 0.6f, presenceGain));
 	}
 
-	inline void processAmp(const dsp::ProcessContextReplacing<T>& context) noexcept
+	inline void processAmp(dsp::AudioBlock<double>& block)
 	{
-		const auto& inBlock = context.getInputBlock();
-		auto& outBlock = context.getOutputBlock();
+        auto tsX = tsXGain->load();
+        bool b = (bool)bright->load();
+        auto inGain = inputGain->load();
+        auto out = outGain->load();
 
-		preAmp.updateCrossover(*crossover);
+        auto in = block.getChannelPointer(0);
+        auto R = block.getChannelPointer(1);
 
-		T yn = 0.0;
+        if (tsX > 0.f)
+            ts9.process(in, tsX, block.getNumSamples());
+        
+        if (!*channel)
+            preAmp.processLoGain(in, inGain, block.getNumSamples());
+        else
+            preAmp.processHiGain(in, inGain, block.getNumSamples());
+        
+        for (int i = 0; i < block.getNumSamples(); ++i)
+        {
+            in[i] = lowPass.processSample(in[i]);
 
-		for (int i = 0; i < inBlock.getNumSamples(); ++i)
-		{
-			auto xn = inBlock.getSample(0, i);
+            T xHPF = highPass.processSample(in[i]);
+            T xBPF = bandPass.processSample(in[i]);
+            in[i] = xHPF + xBPF;
+            in[i] = bass.processSample(in[i]);
+            in[i] = mid.processSample(in[i]);
+            in[i] = treble.processSample(in[i]);
+            in[i] = presence.processSample(in[i]);
+            if (b)
+                in[i] = brightShelf.processSample(in[i]);
+        }
 
-			if (*tsXGain > 0.f)
-				xn = ts9.processAudioSample(xn, *tsXGain);
-
-			xn = preAmp.processAudioSample(xn, *inputGain);
-			xn = lowPass.processSample(xn);
-
-			T xHPF = highPass.processSample(xn);
-			T xBPF = bandPass.processSample(xn);
-			xn = xHPF + xBPF;
-			T xB = bass.processSample(xn);
-			T xM = mid.processSample(xB);
-			T xT = treble.processSample(xM);
-			yn = presence.processSample(xT);
-			if (*bright == true)
-				yn = brightShelf.processSample(yn);
-			
-
-			yn = powerAmp.processAudioSample(yn, *outGain);
-
-			outBlock.setSample(0, i, yn);
-			outBlock.setSample(1, i, yn);
-		}
-
-	}
+        if (!*channel)
+            powerAmp.processLoGain(in, out, block.getNumSamples());
+        else
+            powerAmp.processHiGain(in, out, block.getNumSamples());
+    }
 
 
 	TS9<T> ts9;
@@ -403,12 +490,7 @@ public:
 	ClassBValvePair<T> powerAmp;
 	
 private:
-
-    float lastBass = 0.0;
-	float lastMid = 0.0;
-	float lastTreble = 0.0;
-	float lastPres = 0.0;
-
+    float lastBass, lastMid, lastTreble, lastPres = 0.f;
 };
 
 //=======================================================================

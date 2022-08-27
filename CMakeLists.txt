@@ -17,6 +17,16 @@ if (TARGET juce_vst2_sdk)
     list(APPEND JUCE_FORMATS VST)
 endif()
 
+set(JUCE_FORMATS AU VST3)
+
+if (TARGET juce_vst2_sdk)
+    list(APPEND VST)
+endif()
+
+if (UNIX AND NOT APPLE)
+    list(APPEND LV2)
+endif()
+
 juce_add_plugin(STR-X
     COMPANY_NAME "Arboreal Audio"
     COPY_PLUGIN_AFTER_BUILD TRUE
@@ -24,7 +34,7 @@ juce_add_plugin(STR-X
     PLUGIN_CODE STRX
     FORMATS ${JUCE_FORMATS}
     VST2_CATEGORY kPlugCategEffect
-    VST3_CATEGORY Fx
+    VST3_CATEGORY Fx|Distortion
     AU_MAIN_TYPE kAudioUnitType_Effect
     PRODUCT_NAME "STR-X"
     HARDENED_RUNTIME_ENABLE TRUE)
@@ -39,8 +49,10 @@ target_sources(STR-X
     PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
-    Source/Background.cpp
-    Source/STR-X.hpp)
+    Source/STR-X.hpp
+    Source/Background.hpp
+    Source/AmpComponent.hpp
+    Source/LookAndFeel.h)
 
 target_compile_definitions(STR-X
     PUBLIC
@@ -51,8 +63,9 @@ target_compile_definitions(STR-X
         JUCE_REPORT_APP_USAGE=0)
 
 juce_add_binary_data(BinaryData SOURCES
-    "Source/Resources/Arboreal Logo_2small.png"
-    "Source/Resources/STR-X.png")
+    "Resources/Arboreal Logo_2small.png"
+    "Resources/STR-X.png"
+    "Resources/strix.svg")
 
 set_target_properties(BinaryData PROPERTIES
     POSITION_INDEPENDENT_CODE TRUE)
