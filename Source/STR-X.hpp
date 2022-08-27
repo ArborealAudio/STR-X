@@ -437,10 +437,10 @@ public:
 		// 	currentPres = 0.1f * currentPres + (1.0 - 0.1f) * lastPres;
 		// lastPres = currentPres;
 	    
-		*bass.coefficients = (dsp::IIR::ArrayCoefficients<double>::makeLowShelf(sampleRate, 150.f, 0.606f, bassGain));
-		*mid.coefficients = (dsp::IIR::ArrayCoefficients<double>::makePeakFilter(sampleRate, 600.f, 0.5f, midGain));
-		*treble.coefficients = (dsp::IIR::ArrayCoefficients<double>::makeHighShelf(sampleRate, 1500.f, 0.3f, trebleGain));
-		*presence.coefficients = (dsp::IIR::ArrayCoefficients<double>::makePeakFilter(sampleRate, 4000.f, 0.6f, presenceGain));
+		bass.coefficients = (dsp::IIR::Coefficients<double>::makeLowShelf(sampleRate, 150.f, 0.606f, bassGain));
+		mid.coefficients = (dsp::IIR::Coefficients<double>::makePeakFilter(sampleRate, 600.f, 0.5f, midGain));
+		treble.coefficients = (dsp::IIR::Coefficients<double>::makeHighShelf(sampleRate, 1500.f, 0.3f, trebleGain));
+		presence.coefficients = (dsp::IIR::Coefficients<double>::makePeakFilter(sampleRate, 4000.f, 0.6f, presenceGain));
 	}
 
 	inline void processAmp(dsp::AudioBlock<double>& block)
