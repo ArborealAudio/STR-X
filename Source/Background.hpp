@@ -3,19 +3,40 @@
 #pragma once
 
 /* component for drawing plugin title, logo, version info */
-struct Background : Component
+struct Background : Component, private Timer
 {
-    Background()
+    Background(AudioProcessorValueTreeState& v)
     {
-        strix = Drawable::createFromImageData(BinaryData::strix_svg, BinaryData::strix_svgSize);
+        strix = Drawable::createFromImageData(BinaryData::strx_svg, BinaryData::strx_svgSize);
+
+        channel = v.getRawParameterValue("channel");
+
+        startTimerHz(10);
+    }
+
+    ~Background() override
+    {
+        stopTimer();
+    }
+
+    void timerCallback() override
+    {
+        if (lastChannelState != *channel)
+            repaint(getLocalBounds());
+        lastChannelState = *channel;
     }
 
     void paint(Graphics &g) override
     {
-        g.fillAll(Colours::black);
+        g.setColour(*channel ? Colours::black : Colour(BLUE_BG));
 
-        g.setColour(Colours::whitesmoke);
-        g.drawFittedText("STR_X", getLocalBounds().reduced(10), Justification::centred, 1, 1.f);
+        auto textbounds = getLocalBounds().reduced(getWidth() * 0.1f, 0);
+        g.fillRoundedRectangle(textbounds.reduced(10).toFloat(), 10.f);
+
+        strix->drawWithin(g, getLocalBounds().toFloat(), RectanglePlacement::xLeft, 1.f);
+
+        g.setColour(*channel ? Colour(GREEN) : Colours::wheat);
+        g.drawRoundedRectangle(textbounds.toFloat().reduced(10), 10.f, 3.f);
     }
 
     void resized() override
@@ -23,4 +44,7 @@ struct Background : Component
 
 private:
     std::unique_ptr<Drawable> strix;
+
+    std::atomic<float> *channel;
+    bool lastChannelState = true;
 };

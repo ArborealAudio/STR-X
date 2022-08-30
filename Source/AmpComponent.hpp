@@ -2,10 +2,12 @@
 
 #pragma once
 
-struct AmpComponent : Component
+struct AmpComponent : Component, private Timer
 {
     AmpComponent(AudioProcessorValueTreeState& vts) : apvts(vts)
     {
+        channel = apvts.getRawParameterValue("channel");
+        lnf.channel = channel;
 
         for (auto& k : getKnobs())
         {
@@ -26,11 +28,11 @@ struct AmpComponent : Component
         channelButton.setLookAndFeel(&lnf);
         channelButton.setClickingTogglesState(true);
 
-        StringArray modes { "THICK", "NORMAL", "OPEN" };
+        StringArray modes{"THICK", "NORMAL", "OPEN"};
         mode.addItemList(modes, 1);
         mode.setSelectedItemIndex (1);
         mode.setLookAndFeel(&lnf);
-        mode.setTooltip("Switches the voicing of the preamp\nThick = Split @ 100Hz | Normal = Split @ 250Hz | Open = Split @ 400Hz");
+        mode.setTooltip("Switches the voicing of the preamp\n\nThick = Split @ 100Hz\nNormal = Split @ 250Hz\nOpen = Split @ 400Hz");
         addAndMakeVisible(mode);
 
         inputGainAttach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts, "gain", inputGain);
@@ -43,6 +45,21 @@ struct AmpComponent : Component
         brightAttach = std::make_unique<AudioProcessorValueTreeState::ButtonAttachment>(apvts,"bright", brightButton);
         channelAttach = std::make_unique<AudioProcessorValueTreeState::ButtonAttachment>(apvts, "channel", channelButton);
         outGainAttach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts, "master", outGain);
+
+        startTimerHz(10);
+    }
+
+    ~AmpComponent()
+    {
+        stopTimer();
+    }
+
+    void timerCallback() override
+    {
+        if (lastChannelState != *channel)
+            repaint(getLocalBounds());
+
+        lastChannelState = *channel;
     }
 
     void paint(Graphics& g) override
@@ -51,34 +68,24 @@ struct AmpComponent : Component
         auto w = bounds.getWidth();
         auto h = bounds.getHeight();
 
-        g.setColour(Colour(GREEN));
-        g.drawRoundedRectangle(bounds.toFloat(), 10.f, 5.f);
+        g.setColour(*channel ? Colours::black : Colour(BLUE_BG));
+        g.fillRoundedRectangle(bounds.toFloat(), 10.f);
 
-        g.setColour(Colours::whitesmoke);
+        g.setColour(*channel ? Colours::whitesmoke : Colours::wheat);
 
         Path ltr;
-        ltr.startNewSubPath(bounds.getX() + 5, bounds.getY() + 5);
+        ltr.startNewSubPath(bounds.getX() + 8, bounds.getY() + 5);
         ltr.quadraticTo(w * 0.7f, bounds.getY(), w, h);
 
         Path rtl;
         rtl.startNewSubPath(w - 5, bounds.getY() + 5);
-        rtl.quadraticTo(w * 0.3f, bounds.getY(), bounds.getX(), h);
+        rtl.quadraticTo(w * 0.3f, bounds.getY(), bounds.getX() + 5, h);
 
         g.strokePath(ltr, PathStrokeType(4.f, PathStrokeType::JointStyle::curved, PathStrokeType::EndCapStyle::rounded));
         g.strokePath(rtl, PathStrokeType(4.f, PathStrokeType::JointStyle::curved, PathStrokeType::EndCapStyle::rounded));
 
-        for (auto& k : getKnobs())
-        {
-            if (k == getKnobs().front() || k == getKnobs().back()) {
-                Rectangle<float> b = k->getBounds().expanded(20).toFloat();
-                float centerX = b.getCentreX();
-                float centerY = b.getCentreY();
-
-                ColourGradient gradient{Colours::black, centerX, centerY, Colours::transparentWhite, b.getX(), b.getY(), true};
-                g.setGradientFill(gradient);
-                g.fillEllipse(b);
-            }
-        }
+        g.setColour(*channel ? Colour(GREEN) : Colours::wheat);
+        g.drawRoundedRectangle(bounds.toFloat(), 10.f, 5.f);
     }
 
     void resized() override
@@ -86,30 +93,27 @@ struct AmpComponent : Component
         auto b = getLocalBounds().reduced(15);
         auto controls = b.removeFromBottom(b.getHeight() / 2);
         auto w = controls.getWidth();
+        auto h = controls.getHeight();
         auto chunk = w / 7;
 
         for (auto& k : getKnobs())
-        {
-            if (k != getKnobs().back())
-                k->setBounds(controls.removeFromLeft(chunk).reduced(chunk * 0.1));
-            else
-                k->setBounds(controls.reduced(chunk * 0.1));
-        }
+            k->setBounds(controls.removeFromLeft(chunk).reduced(chunk * 0.1f));
 
-        mode.setSize(100, 35);
+        mode.setSize(jmax(100.f, w * 0.15f), jmax(35.f, h * 0.3f));
         mode.setCentrePosition(b.getCentreX(), b.getCentreY());
 
         auto rightThird = b.removeFromRight(w / 3);
-        brightButton.setSize(70, 30);
+        brightButton.setSize(jmax(75.f, w * 0.1f), jmax(35.f, h * 0.3f));
         brightButton.setCentrePosition(rightThird.getCentreX(), rightThird.getCentreY());
 
         auto leftThird = b.removeFromLeft(w / 3);
-        channelButton.setSize(70, 30);
+        channelButton.setSize(jmax(75.f, w * 0.1f), jmax(35.f, h * 0.3f));
         channelButton.setCentrePosition(leftThird.getCentreX(), rightThird.getCentreY());
     }
 
 private:
     AudioProcessorValueTreeState &apvts;
+    CustomLookAndFeel lnf;
 
     Slider ts9Gain, inputGain, bass, mid, treble, presence, outGain;
     std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> ts9Attach, inputGainAttach, bassAttach, midAttach, trebleAttach, presenceAttach, outGainAttach;
@@ -120,7 +124,8 @@ private:
     TextButton brightButton, channelButton;
     std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> brightAttach, channelAttach;
 
-    CustomLookAndFeel lnf;
+    std::atomic<float> *channel;
+    bool lastChannelState = true;
 
     std::vector<Slider*> getKnobs()
     {
