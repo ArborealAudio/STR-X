@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.15)
 
 project(STR-X VERSION 1.2)
 
+set(CMAKE_CXX_STANDARD 17)
+
 find_package(JUCE CONFIG REQUIRED)
 
 add_subdirectory(modules/clap-juce-extensions EXCLUDE_FROM_ALL)
@@ -16,9 +18,6 @@ endif()
 if (TARGET juce_vst2_sdk)
     list(APPEND JUCE_FORMATS VST)
 endif()
-
-juce_add_modules(
-    "$ENV{HOME}/modules/Arbor_modules")
 
 juce_add_plugin(STR-X
     COMPANY_NAME "Arboreal Audio"
@@ -38,6 +37,9 @@ clap_juce_extensions_plugin(TARGET STR-X
 
 juce_generate_juce_header(STR-X)
 
+juce_add_modules(
+    "$ENV{HOME}/modules/Arbor_modules")
+
 target_sources(STR-X
     PRIVATE
     Source/PluginProcessor.cpp
@@ -56,9 +58,8 @@ target_compile_definitions(STR-X
         JUCE_REPORT_APP_USAGE=0)
 
 juce_add_binary_data(BinaryData SOURCES
-    "Resources/Arboreal Logo_2small.png"
-    "Resources/STR-X.png"
-    "Resources/strix.svg")
+    "Resources/str-x.svg"
+    "Resources/menlo.ttc")
 
 set_target_properties(BinaryData PROPERTIES
     POSITION_INDEPENDENT_CODE TRUE)
