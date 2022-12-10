@@ -29,7 +29,6 @@ struct CustomLookAndFeel : LookAndFeel_V4,
             mainColor = newValue ? Colours::black : Colours::grey;
             accentColor = newValue ? Colour(GREEN) : Colours::wheat;
             buttonBackground = newValue ? Colour(GRAY) : Colours::wheat;
-            // buttonText = newValue ? Colours::white : buttonBackground.contrasting();
         }
     }
 
