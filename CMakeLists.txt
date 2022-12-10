@@ -4,7 +4,7 @@ project(STR-X VERSION 1.2)
 
 set(CMAKE_CXX_STANDARD 17)
 
-find_package(JUCE CONFIG REQUIRED)
+add_subdirectory(modules/JUCE)
 
 add_subdirectory(modules/clap-juce-extensions EXCLUDE_FROM_ALL)
 juce_set_vst2_sdk_path("$ENV{HOME}/vst2_sdk")
@@ -26,14 +26,14 @@ juce_add_plugin(STR-X
     PLUGIN_CODE STRX
     FORMATS ${JUCE_FORMATS}
     VST2_CATEGORY kPlugCategEffect
-    VST3_CATEGORY Fx|Distortion
+    VST3_CATEGORIES Fx Distortion
     AU_MAIN_TYPE kAudioUnitType_Effect
     PRODUCT_NAME "STR-X"
     HARDENED_RUNTIME_ENABLE TRUE)
 
 clap_juce_extensions_plugin(TARGET STR-X
     CLAP_ID "com.ArborealAudio.STR-X.clap"
-    CLAP_FEATURES guitar amp)
+    CLAP_FEATURES audio-effect distortion)
 
 juce_generate_juce_header(STR-X)
 
@@ -59,7 +59,7 @@ target_compile_definitions(STR-X
 
 juce_add_binary_data(BinaryData SOURCES
     "Resources/str-x.svg"
-    "Resources/menlo.ttc")
+    "Resources/Menlo-Regular.ttf")
 
 set_target_properties(BinaryData PROPERTIES
     POSITION_INDEPENDENT_CODE TRUE)
