@@ -9,6 +9,13 @@
 #pragma once
 
 #include <JuceHeader.h>
+
+/*input * (max-min) + min*/
+static float cookParams(float valueToCook, float minValue, float maxValue) 
+{
+    return valueToCook * (maxValue - minValue) + minValue;
+}
+
 #include "STR-X.hpp"
 
 #if NDEBUG
@@ -91,16 +98,13 @@ private:
     std::atomic<float>* hq, *renderHQ, *outVol_dB, *legacyTone;
 
     AudioBuffer<double> doubleBuffer;
-
+#if USE_SIMD
     AmpProcessor<vec> amp;
+#else
+    AmpProcessor<double> amp;
+#endif
 
     strix::SIMD<double, dsp::AudioBlock<double>, strix::AudioBlock<vec>> simd;
-
-    /*input * (max-min)+min*/
-    float cookParams(float valueToCook, float minValue, float maxValue) 
-    {
-        return valueToCook * (maxValue - minValue) + minValue;
-    }
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (STRXAudioProcessor)

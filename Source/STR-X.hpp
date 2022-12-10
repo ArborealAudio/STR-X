@@ -6,102 +6,102 @@ class TS9
 public:
     TS9() = default;
 
-    void prepare(const dsp::ProcessSpec& spec) noexcept
-	{
-		HPF.prepare(spec);
-		LPF.prepare(spec);
-		LPF_2.prepare(spec);
+    void prepare(const dsp::ProcessSpec &spec) noexcept
+    {
+        HPF.prepare(spec);
+        LPF.prepare(spec);
+        LPF_2.prepare(spec);
 
-		HPF.setType(strix::FilterType::firstOrderHighpass);
-		LPF.setType(strix::FilterType::firstOrderLowpass);
-		LPF_2.setType(strix::FilterType::firstOrderLowpass);
+        HPF.setType(strix::FilterType::firstOrderHighpass);
+        LPF.setType(strix::FilterType::firstOrderLowpass);
+        LPF_2.setType(strix::FilterType::firstOrderLowpass);
 
-		HPF.setCutoffFreq(720.0);
-		LPF.setCutoffFreq(5600.0);
-		LPF_2.setCutoffFreq(723.4);
-	}
+        HPF.setCutoffFreq(720.0);
+        LPF.setCutoffFreq(5600.0);
+        LPF_2.setCutoffFreq(723.4);
+    }
 
-	void reset()
-	{
-		HPF.reset();
-		LPF.reset();
-		LPF_2.reset();
-	}
+    void reset()
+    {
+        HPF.reset();
+        LPF.reset();
+        LPF_2.reset();
+    }
 
-    inline void process(double* x, double drive, int numSamples)
+    inline void process(double *x, double drive, int numSamples)
     {
         for (int i = 0; i < numSamples; ++i)
             x[i] = processSample(x[i], drive);
     }
 
-    inline void process(vec* x, vec drive, int numSamples)
+    inline void process(vec *x, vec drive, int numSamples)
     {
         for (int i = 0; i < numSamples; ++i)
             x[i] = processSample(x[i], drive);
     }
 
 private:
-	inline double processSample(double x, double drive)
-	{
-		double yn = 0.0;
-		double xDry = x;
-		double currentGain = drive;
+    inline double processSample(double x, double drive)
+    {
+        double yn = 0.0;
+        double xDry = x;
+        double currentGain = drive;
 
-		if (currentGain != lastGain)
-			lastGain = 0.001f * currentGain + (1.0 - 0.001f) * lastGain;
-		else
-			lastGain = drive;
+        if (currentGain != lastGain)
+            lastGain = 0.001f * currentGain + (1.0 - 0.001f) * lastGain;
+        else
+            lastGain = drive;
 
-		k = 2.0 * drive;
+        k = 2.0 * drive;
 
-		x *= drive / 2;
+        x *= drive / 2;
 
-		x = HPF.processSample(0, x);
+        x = HPF.processSample(0, x);
 
-		x = LPF.processSample(0, x);
+        x = LPF.processSample(0, x);
 
-		x = std::tanh(k * x) / std::tanh(k);
+        x = std::tanh(k * x) / std::tanh(k);
 
-		x = LPF_2.processSample(0, x);
+        x = LPF_2.processSample(0, x);
 
-		yn = ((x * (drive / 10.f)) + (xDry * (1.f - (drive / 10.f))));
+        yn = ((x * (drive / 10.f)) + (xDry * (1.f - (drive / 10.f))));
 
-		return yn;
-	}
+        return yn;
+    }
 
     inline vec processSample(vec x, vec drive)
-	{
-		vec yn = 0.0;
-		vec xDry = x;
-		vec currentGain = drive;
+    {
+        vec yn = 0.0;
+        vec xDry = x;
+        vec currentGain = drive;
 
-		if (xsimd::any(currentGain != lastGain))
-			lastGain = 0.001f * currentGain + (1.0 - 0.001f) * lastGain;
-		else
-			lastGain = drive;
+        if (xsimd::any(currentGain != lastGain))
+            lastGain = 0.001f * currentGain + (1.0 - 0.001f) * lastGain;
+        else
+            lastGain = drive;
 
-		k = 2.0 * drive;
+        k = 2.0 * drive;
 
-		x *= drive / 2;
+        x *= drive / 2;
 
-		x = HPF.processSample(0, x);
+        x = HPF.processSample(0, x);
 
-		x = LPF.processSample(0, x);
+        x = LPF.processSample(0, x);
 
-		x = xsimd::tanh(k * x) / xsimd::tanh(k);
+        x = xsimd::tanh(k * x) / xsimd::tanh(k);
 
-		x = LPF_2.processSample(0, x);
+        x = LPF_2.processSample(0, x);
 
-		yn = ((x * (drive / 10.0)) + (xDry * (1.0 - (drive / 10.0))));
+        yn = ((x * (drive / 10.0)) + (xDry * (1.0 - (drive / 10.0))));
 
-		return yn;
-	}
+        return yn;
+    }
 
-	Type lastGain = 0.0;
+    Type lastGain = 0.0;
 
-	strix::SVTFilter<Type> HPF, LPF, LPF_2;
+    strix::SVTFilter<Type> HPF, LPF, LPF_2;
 
-	Type k = 0.0;
+    Type k = 0.0;
 };
 
 //==================================================================
@@ -110,84 +110,107 @@ template <typename Type>
 class PreAmp
 {
 public:
-    PreAmp() = default;
+    PreAmp(strix::FloatParameter *inGain, strix::ChoiceParameter *crossover, strix::ChoiceParameter *channel) : inGain(inGain), xover(crossover), channel(channel)
+    {
+    }
 
-    void prepare(const dsp::ProcessSpec& spec) noexcept
-	{
-		inputHPF.prepare(spec);
-		dcRemoval.prepare(spec);
-		lowShelf.prepare(spec);
+    void prepare(const dsp::ProcessSpec &spec) noexcept
+    {
+        inputHPF.prepare(spec);
+        dcRemoval.prepare(spec);
+        lowShelf.prepare(spec);
 
-		lr.prepare(spec);
-		lr.setType(strix::LRFilterType::lowpass);
+        lr.prepare(spec);
+        lr.setType(strix::LRFilterType::lowpass);
 
-		dcRemoval.coefficients = (dsp::IIR::Coefficients<double>::makeHighPass(spec.sampleRate, 10.0));
-		lowShelf.coefficients = (dsp::IIR::Coefficients<double>::makeLowShelf(spec.sampleRate, 185.0, 1.8, 0.5));
-		inputHPF.coefficients = (dsp::IIR::Coefficients<double>::makeHighPass(spec.sampleRate, 65.0));
-	}
+        dcRemoval.coefficients = (dsp::IIR::Coefficients<double>::makeHighPass(spec.sampleRate, 10.0));
+        lowShelf.coefficients = (dsp::IIR::Coefficients<double>::makeLowShelf(spec.sampleRate, 185.0, 1.8, 0.5));
+        inputHPF.coefficients = (dsp::IIR::Coefficients<double>::makeHighPass(spec.sampleRate, 65.0));
 
-	void reset()
-	{
-		inputHPF.reset();
-		dcRemoval.reset();
-		lowShelf.reset();
-		lr.reset();
-	}
+        gain.reset(spec.maximumBlockSize);
+    }
 
-	inline void updateCrossover(int crossover)
-	{
+    void reset()
+    {
+        inputHPF.reset();
+        dcRemoval.reset();
+        lowShelf.reset();
+        lr.reset();
+    }
+
+    std::atomic<bool> needCrossoverUpdate = false;
+
+    void updateCrossover(int crossover)
+    {
         switch (crossover)
         {
-		case 0:
-			lr.setCutoffFrequency(100.0);
+        case 0:
+            lr.setCutoffFrequency(100.0);
             break;
         case 1:
             lr.setCutoffFrequency(250.0);
             break;
         case 2:
-			lr.setCutoffFrequency(400.0);
+            lr.setCutoffFrequency(400.0);
             break;
         default:
             lr.setCutoffFrequency(250.0);
             break;
         }
-	}
+    }
 
-    inline void processHiGain(Type* in, Type inputGain, int numSamples)
+    template <typename Block>
+    void process(Block &block)
     {
-        for (int i = 0; i < numSamples; ++i)
+        if (needCrossoverUpdate)
         {
-            in[i] = processSampleHiGain(in[i], inputGain);
+            updateCrossover(*xover);
+            needCrossoverUpdate = false;
+        }
+
+        gain.setTargetValue(*inGain);
+
+        if (*channel)
+        {
+            for (size_t ch = 0; ch < block.getNumChannels(); ++ch)
+                processHiGain(block.getChannelPointer(ch), block.getNumSamples());
+        }
+        else
+        {
+            for (size_t ch = 0; ch < block.getNumChannels(); ++ch)
+                processLoGain(block.getChannelPointer(ch), block.getNumSamples());
         }
     }
 
-    inline void processLoGain(Type* in, Type inputGain, int numSamples)
-    {
-        for (int i = 0; i < numSamples; ++i)
-        {
-            in[i] = processSampleLoGain(in[i], inputGain);
-        }
-    }
-	
 private:
-    inline Type processSampleHiGain(Type xn, Type inputGain)
-	{
-	    Type currentInputGain = inputGain;
-		if (xsimd::any(currentInputGain != lastInputGain))
-			lastInputGain = 0.001f * currentInputGain + (1.0 - 0.001f) * lastInputGain;
-		else
-			lastInputGain = inputGain;
-			
-		Type gain = lastInputGain * 8.f;
-		Type yn = 0.0, xnL = 0.0, xnH = 0.0;
+    inline void processHiGain(Type *in, int numSamples)
+    {
+        for (int i = 0; i < numSamples; ++i)
+        {
+            in[i] = processSampleHiGain(in[i]);
+        }
+    }
 
-		xn *= gain;
+    inline void processLoGain(Type *in, int numSamples)
+    {
+        for (int i = 0; i < numSamples; ++i)
+        {
+            in[i] = processSampleLoGain(in[i]);
+        }
+    }
+
+    inline Type processSampleHiGain(Type xn)
+    {
+        Type gain_ = gain.getNextValue() * 8.f;
+        Type yn = 0.0, xnL = 0.0, xnH = 0.0;
+
+        xn *= gain_;
 
         lr.processSample(0, xn, xnL, xnH);
 
         xnL = inputHPF.processSample(xnL);
 
-		// high band distortion
+        // high band distortion
         xnH = hiGainSaturation(xnH);
 
         // low band distortion
@@ -195,31 +218,25 @@ private:
 
         yn = xnL + xnH;
 
-		yn = dcRemoval.processSample(yn);
+        yn = dcRemoval.processSample(yn);
 
-		yn = lowShelf.processSample(yn);
+        yn = lowShelf.processSample(yn);
 
-		return yn;
-	}
+        return yn;
+    }
 
-    inline Type processSampleLoGain(Type xn, Type inputGain)
+    inline Type processSampleLoGain(Type xn)
     {
-        Type currentInputGain = inputGain;
-		if (xsimd::any(currentInputGain != lastInputGain))
-			lastInputGain = 0.001f * currentInputGain + (1.0 - 0.001f) * lastInputGain;
-		else
-			lastInputGain = inputGain;
-			
-		Type gain = lastInputGain * 4.f;
-		Type yn = 0.0, xnL = 0.0, xnH = 0.0;
+        Type gain_ = gain.getNextValue() * 4.f;
+        Type yn = 0.0, xnL = 0.0, xnH = 0.0;
 
-		xn *= gain;
+        xn *= gain_;
 
         lr.processSample(0, xn, xnL, xnH);
 
         // xnL = inputHPF.processSample(xnL);
 
-		// high band distortion
+        // high band distortion
         xnH = loGainSaturation(xnH);
 
         // low band distortion
@@ -227,17 +244,17 @@ private:
 
         yn = xnL + xnH;
 
-		yn = dcRemoval.processSample(yn);
+        yn = dcRemoval.processSample(yn);
 
-		yn = lowShelf.processSample(yn);
+        yn = lowShelf.processSample(yn);
 
-		return yn;
+        return yn;
     }
 
-    inline double hiGainSaturation (double x)
+    inline double hiGainSaturation(double x)
     {
-        double k = lastInputGain / 3.0;
-		double nk = k / 0.9;
+        double k = gain.getCurrentValue() / 3.0;
+        double nk = k / 0.9;
 
         if (x > 0.0)
         {
@@ -265,12 +282,14 @@ private:
         return x;
     }
 
-    inline vec hiGainSaturation (vec x)
+    inline vec hiGainSaturation(vec x)
     {
-        vec k = lastInputGain / 3.0;
-		vec nk = k / 0.9;
+        vec k = gain.getCurrentValue() / 3.0;
+        vec nk = k / 0.9;
 
-        return xsimd::select(x > 0.0, xsimd::atan(k * x) / xsimd::atan(k), 0.9 * xsimd::atan(nk * x) / xsimd::atan(nk));
+        return xsimd::select(x > 0.0,
+                             xsimd::atan(k * x) / xsimd::atan(k),
+                             0.9 * xsimd::atan(nk * x) / xsimd::atan(nk));
     }
 
     inline vec loGainSaturation(vec x)
@@ -278,11 +297,247 @@ private:
         return xsimd::select(x > 0.0, (x / (1.0 + xsimd::abs(x))) * 2.0, (2.0 * x) / (1.0 + xsimd::abs(x * 2.0)));
     }
 
-	strix::LinkwitzRileyFilter<Type> lr;
+    strix::LinkwitzRileyFilter<Type> lr;
 
-	dsp::IIR::Filter<Type> inputHPF, dcRemoval, lowShelf;
+    dsp::IIR::Filter<Type> inputHPF, dcRemoval, lowShelf;
 
-    Type lastInputGain = 0.0;
+    strix::FloatParameter *inGain = nullptr;
+    strix::ChoiceParameter *xover = nullptr;
+    strix::ChoiceParameter *channel = nullptr;
+
+    SmoothedValue<float> gain;
+};
+
+//========================================================
+
+template <typename Type>
+struct ToneSection
+{
+    ToneSection(AudioProcessorValueTreeState &v) : apvts(v)
+    {
+        bass_p = static_cast<strix::FloatParameter *>(apvts.getParameter("bass"));
+        mid_p = static_cast<strix::FloatParameter *>(apvts.getParameter("mid"));
+        treble_p = static_cast<strix::FloatParameter *>(apvts.getParameter("treble"));
+        presence_p = static_cast<strix::FloatParameter *>(apvts.getParameter("presence"));
+        bright_p = static_cast<strix::BoolParameter *>(apvts.getParameter("bright"));
+        legacy_p = static_cast<strix::BoolParameter *>(apvts.getParameter("legacyTone"));
+    }
+
+    dsp::IIR::Filter<Type> highPass, bandPass, lowPass, bass, mid, treble, presence, brightShelf;
+
+    std::vector<dsp::IIR::Filter<Type> *> getFilters()
+    {
+        return {
+            &highPass,
+            &bandPass,
+            &lowPass,
+            &bass,
+            &mid,
+            &treble,
+            &presence,
+            &brightShelf};
+    }
+
+    SmoothedValue<float> bass_s, mid_s, treble_s, pres_s;
+    std::vector<SmoothedValue<float> *> getSmoothers()
+    {
+        return {
+            &bass_s,
+            &mid_s,
+            &treble_s,
+            &pres_s};
+    }
+
+    void prepare(const dsp::ProcessSpec &spec)
+    {
+        SR = spec.sampleRate;
+
+        highPass.coefficients = (dsp::IIR::Coefficients<double>::makeFirstOrderHighPass(spec.sampleRate, 750.f));
+        bandPass.coefficients = (dsp::IIR::Coefficients<double>::makeBandPass(spec.sampleRate, 80.f));
+        lowPass.coefficients = (dsp::IIR::Coefficients<double>::makeFirstOrderLowPass(spec.sampleRate, 10000.f));
+        brightShelf.coefficients = (dsp::IIR::Coefficients<double>::makeHighShelf(spec.sampleRate, 2500.0, 0.707, 2.0));
+
+        updateAllFilters();
+
+        for (auto *s : getSmoothers())
+            s->reset(spec.maximumBlockSize);
+    }
+
+    void reset()
+    {
+        for (auto *f : getFilters())
+            f->reset();
+    }
+
+    void updateAllFilters()
+    {
+        float bassParam = *bass_p;
+        float midParam = *mid_p;
+        float trebleParam = *treble_p;
+        float presenceParam = *presence_p;
+
+        bassParam /= 10.f;
+        midParam /= 10.f;
+        trebleParam /= 10.f;
+        presenceParam /= 10.f;
+
+        float bassCook = 0.0, midCook = 0.0, trebleCook = 0.0, presenceCook = 0.0;
+
+        if (!*legacy_p)
+        {
+            // convert 0 - 1 value into a dB value
+            bassCook = jmap(bassParam, -12.f, 12.f);
+            midCook = jmap(midParam, -7.f, 7.f);
+            trebleCook = jmap(trebleParam, -14.f, 14.f);
+            presenceCook = jmap(presenceParam, -8.f, 8.f);
+
+            // convert to linear multiplier
+            bassCook = pow(10, (bassCook / 20));
+            midCook = pow(10, (midCook / 20));
+            trebleCook = pow(10, (trebleCook / 20));
+            presenceCook = pow(10, (presenceCook / 20));
+        }
+        else
+        {
+            // convert 0 - 1 value into legacy linear values
+            bassCook = cookParams(bassParam, 0.2f, 1.666f);
+            midCook = cookParams(midParam, 0.3f, 2.2f);
+            trebleCook = cookParams(trebleParam, 0.2f, 3.0f);
+            presenceCook = cookParams(presenceParam, 0.4f, 2.5f);
+        }
+        bass.coefficients = (dsp::IIR::Coefficients<double>::makeLowShelf(SR, 150.f, 0.606f, bassCook));
+        mid.coefficients = (dsp::IIR::Coefficients<double>::makePeakFilter(SR, 600.f, 0.5f, midCook));
+        treble.coefficients = (dsp::IIR::Coefficients<double>::makeHighShelf(SR, 1500.f, 0.3f, trebleCook));
+        presence.coefficients = (dsp::IIR::Coefficients<double>::makePeakFilter(SR, 4000.f, 0.6f, presenceCook));
+    }
+
+    /**
+     * @param index bitmask for which filter needs update
+     * 1: Bass | 2: Mid | 4: Treble | 8: Presence
+     */
+    inline void updateFilter(int index, float newValue)
+    {
+        newValue /= 10.f;
+
+        switch (index)
+        {
+        case 1:
+            if (!*legacy_p)
+            {
+                newValue = jmap(newValue, -12.f, 12.f);
+                newValue = pow(10, (newValue / 20));
+            }
+            else
+                newValue = cookParams(newValue, 0.2f, 1.666f);
+            *bass.coefficients = (dsp::IIR::ArrayCoefficients<double>::makeLowShelf(SR, 150.f, 0.606f, newValue));
+            break;
+        case 1 << 1:
+            if (!*legacy_p)
+            {
+                newValue = jmap(newValue, -7.f, 7.f);
+                newValue = pow(10, (newValue / 20));
+            }
+            else
+                newValue = cookParams(newValue, 0.3f, 2.2f);
+            *mid.coefficients = (dsp::IIR::ArrayCoefficients<double>::makePeakFilter(SR, 600.f, 0.5f, newValue));
+            break;
+        case 1 << 2:
+            if (!*legacy_p)
+            {
+                newValue = jmap(newValue, -14.f, 14.f);
+                newValue = pow(10, (newValue / 20));
+            }
+            else
+                newValue = cookParams(newValue, 0.2f, 3.0f);
+            *treble.coefficients = (dsp::IIR::ArrayCoefficients<double>::makeHighShelf(SR, 1500.f, 0.3f, newValue));
+            break;
+        case 1 << 3:
+            if (!*legacy_p)
+            {
+                newValue = jmap(newValue, -8.f, 8.f);
+                newValue = pow(10, (newValue / 20));
+            }
+            else
+                newValue = cookParams(newValue, 0.4f, 2.5f);
+            *presence.coefficients = (dsp::IIR::ArrayCoefficients<double>::makePeakFilter(SR, 4000.f, 0.6f, newValue));
+            break;
+        }
+    }
+
+    template <typename Block>
+    void process(Block &block)
+    {
+        bass_s.setTargetValue(*bass_p);
+        mid_s.setTargetValue(*mid_p);
+        treble_s.setTargetValue(*treble_p);
+        pres_s.setTargetValue(*presence_p);
+
+        bool b = *bright_p;
+
+        auto smoothers = getSmoothers();
+        int bitmask = 0;
+        for (int i = 0; i < smoothers.size(); ++i)
+            if (smoothers[i]->isSmoothing())
+                bitmask |= 1 << i;
+
+        if (bitmask > 0)
+        {
+            for (size_t ch = 0; ch < block.getNumChannels(); ++ch)
+            {
+                auto *in = block.getChannelPointer(ch);
+                for (size_t i = 0; i < block.getNumSamples(); ++i)
+                {
+                    int bit = 1;
+                    for (int n = 0; n < smoothers.size(); ++n)
+                    {
+                        if (bit & bitmask)
+                            updateFilter(bit, smoothers[n]->getNextValue());
+                        
+                        bit <<= 1;
+                        // doing it per-channel since we're using SIMD and will only run once...not the best
+                    }
+
+                    in[i] = lowPass.processSample(in[i]);
+
+                    Type xHPF = highPass.processSample(in[i]);
+                    Type xBPF = bandPass.processSample(in[i]);
+                    in[i] = xHPF + xBPF;
+                    in[i] = bass.processSample(in[i]);
+                    in[i] = mid.processSample(in[i]);
+                    in[i] = treble.processSample(in[i]);
+                    in[i] = presence.processSample(in[i]);
+                    if (b)
+                        in[i] = brightShelf.processSample(in[i]);
+                }
+            }
+            return;
+        }
+
+        for (size_t ch = 0; ch < block.getNumChannels(); ++ch)
+        {
+            auto *in = block.getChannelPointer(ch);
+            for (size_t i = 0; i < block.getNumSamples(); ++i)
+            {
+                in[i] = lowPass.processSample(in[i]);
+
+                Type xHPF = highPass.processSample(in[i]);
+                Type xBPF = bandPass.processSample(in[i]);
+                in[i] = xHPF + xBPF;
+                in[i] = bass.processSample(in[i]);
+                in[i] = mid.processSample(in[i]);
+                in[i] = treble.processSample(in[i]);
+                in[i] = presence.processSample(in[i]);
+                if (b)
+                    in[i] = brightShelf.processSample(in[i]);
+            }
+        }
+    }
+
+private:
+    AudioProcessorValueTreeState &apvts;
+    strix::FloatParameter *bass_p, *mid_p, *treble_p, *presence_p;
+    strix::BoolParameter *bright_p, *legacy_p;
+    double SR = 44100.0;
 };
 
 //========================================================
@@ -291,107 +546,123 @@ template <typename Type>
 class ClassBValvePair
 {
 public:
-    ClassBValvePair() = default;
+    ClassBValvePair(strix::FloatParameter *outGain, strix::ChoiceParameter *chMode) : gain(outGain), channel(chMode)
+    {
+    }
 
-	void prepare(const dsp::ProcessSpec& spec) noexcept
-	{
-		dcRemoval.prepare(spec);
-		dcRemoval.coefficients = (dsp::IIR::Coefficients<double>::makeHighPass(spec.sampleRate, 10.0));
-	}
+    void prepare(const dsp::ProcessSpec &spec) noexcept
+    {
+        dcRemoval.prepare(spec);
+        dcRemoval.coefficients = (dsp::IIR::Coefficients<double>::makeHighPass(spec.sampleRate, 10.0));
+    }
 
-	void reset()
-	{
-		dcRemoval.reset();
-	}
+    void reset()
+    {
+        dcRemoval.reset();
+    }
 
-    inline void processHiGain(Type* in, Type gain, int numSamples)
+    template <typename Block>
+    void process(Block &block)
+    {
+        if (*channel)
+            for (size_t ch = 0; ch < block.getNumChannels(); ++ch)
+                processHiGain(block.getChannelPointer(ch), *gain, block.getNumSamples());
+        else
+            for (size_t ch = 0; ch < block.getNumChannels(); ++ch)
+                processLoGain(block.getChannelPointer(ch), *gain, block.getNumSamples());
+    }
+
+    inline void processHiGain(Type *in, float gain, int numSamples)
     {
         for (int i = 0; i < numSamples; ++i)
             in[i] = processSampleHiGain(in[i], gain);
     }
 
-    inline void processLoGain(Type* in, Type gain, int numSamples)
+    inline void processLoGain(Type *in, float gain, int numSamples)
     {
         for (int i = 0; i < numSamples; ++i)
             in[i] = processSampleLoGain(in[i], gain);
     }
 
-	inline Type processSampleHiGain(Type xn, Type outGain)
-	{
-	    Type currentGain = outGain;
-		if (xsimd::any(currentGain != lastGain))
-			lastGain = 0.001f * currentGain + (1.0 - 0.001f) * lastGain;
-		else
-			lastGain = outGain;
-	    
-		Type gain = lastGain * 0.6;
-		Type yn = 0.0;
+    inline Type processSampleHiGain(Type xn, float outGain)
+    {
+        float currentGain = outGain;
+        if (currentGain != lastGain)
+            lastGain = 0.001f * currentGain + (1.0 - 0.001f) * lastGain;
+        else
+            lastGain = outGain;
 
-		xn *= gain;
+        float gain = lastGain * 0.6;
+        Type yn = 0.0;
 
-		// --- asymmetrical waveshaping
-		Type yn_pos = waveShaper(xn, 1.70, 23.6, 1.01);
-		Type yn_neg = waveShaper(xn, 1.70, 1.01, 23.6);
+        xn *= gain;
 
-		yn_pos = dcRemoval.processSample(yn_pos);
-		yn_neg = dcRemoval.processSample(yn_neg);
+        // --- asymmetrical waveshaping
+        Type yn_pos = waveShaper(xn, 1.70, 23.6, 1.01);
+        Type yn_neg = waveShaper(xn, 1.70, 1.01, 23.6);
 
-		// --- symmetrical waveshaping
-		yn_pos = waveShaper(yn_pos, 4.0, 1.01, 1.01);
-		yn_neg = waveShaper(yn_neg, 4.0, 1.01, 1.01);
+        yn_pos = dcRemoval.processSample(yn_pos);
+        yn_neg = dcRemoval.processSample(yn_neg);
 
-		yn = yn_pos + yn_neg;
+        // --- symmetrical waveshaping
+        yn_pos = waveShaper(yn_pos, 4.0, 1.01, 1.01);
+        yn_neg = waveShaper(yn_neg, 4.0, 1.01, 1.01);
 
-		yn *= 0.1767;
+        yn = yn_pos + yn_neg;
 
-		return yn;
-	}
+        yn *= 0.1767;
 
-    inline Type processSampleLoGain(Type xn, Type outGain)
-	{
-	    Type currentGain = outGain;
-		if (xsimd::any(currentGain != lastGain))
-			lastGain = 0.001f * currentGain + (1.0 - 0.001f) * lastGain;
-		else
-			lastGain = outGain;
-	    
-		Type gain = lastGain * 0.6;
-		Type yn = 0.0;
+        return yn;
+    }
 
-		xn *= gain;
+    inline Type processSampleLoGain(Type xn, float outGain)
+    {
+        float currentGain = outGain;
+        if (currentGain != lastGain)
+            lastGain = 0.001f * currentGain + (1.0 - 0.001f) * lastGain;
+        else
+            lastGain = outGain;
 
-		// --- asymmetrical waveshaping
-		Type yn_pos = waveShaper(xn, 1.70, 23.6, 2.01);
-		Type yn_neg = waveShaper(xn, 1.70, 2.01, 23.6);
+        float gain = lastGain * 0.6;
+        Type yn = 0.0;
 
-		yn_pos = dcRemoval.processSample(yn_pos);
-		yn_neg = dcRemoval.processSample(yn_neg);
+        xn *= gain;
 
-		// --- symmetrical waveshaping
-		yn_pos = waveShaper(yn_pos, 2.0, 2.01, 2.01);
-		yn_neg = waveShaper(yn_neg, 2.0, 2.01, 2.01);
+        // --- asymmetrical waveshaping
+        Type yn_pos = waveShaper(xn, 1.70, 23.6, 2.01);
+        Type yn_neg = waveShaper(xn, 1.70, 2.01, 23.6);
 
-		yn = yn_pos + yn_neg;
+        yn_pos = dcRemoval.processSample(yn_pos);
+        yn_neg = dcRemoval.processSample(yn_neg);
 
-		yn *= 0.1767;
+        // --- symmetrical waveshaping
+        yn_pos = waveShaper(yn_pos, 2.0, 2.01, 2.01);
+        yn_neg = waveShaper(yn_neg, 2.0, 2.01, 2.01);
 
-		return yn;
-	}
+        yn = yn_pos + yn_neg;
+
+        yn *= 0.1767;
+
+        return yn;
+    }
 
 private:
-	dsp::IIR::Filter<Type> dcRemoval;
+    dsp::IIR::Filter<Type> dcRemoval;
 
-    Type lastGain = 0.0;
+    strix::FloatParameter *gain = nullptr;
+    strix::ChoiceParameter *channel = nullptr;
 
-	inline double waveShaper(double xn, Type g, Type Ln, Type Lp)
-	{
-		Type yn = 0.0;
-		if (xn <= 0)
-			yn = (g * xn) / (1.0 - ((g * xn) / Ln));
-		else
-			yn = (g * xn) / (1.0 + ((g * xn) / Lp));
-		return yn;
-	}
+    float lastGain = 0.0;
+
+    inline double waveShaper(double xn, Type g, Type Ln, Type Lp)
+    {
+        Type yn = 0.0;
+        if (xn <= 0)
+            yn = (g * xn) / (1.0 - ((g * xn) / Ln));
+        else
+            yn = (g * xn) / (1.0 + ((g * xn) / Lp));
+        return yn;
+    }
 
     inline vec waveShaper(vec xn, Type g, Type Ln, Type Lp)
     {
@@ -404,135 +675,63 @@ private:
 template <typename T>
 class AmpProcessor
 {
-    std::atomic<float> *inputGain, *tsXGain, *bright, *outGain, *channel;
+    std::atomic<float> *inputGain, *tsXGain, *outGain, *channel;
 
-	dsp::IIR::Filter<T> highPass, bandPass, lowPass,
-    bass, mid, treble, presence, brightShelf;
+    double SR = 0.0;
 
     AudioProcessorValueTreeState &vts;
 
 public:
-    AmpProcessor(AudioProcessorValueTreeState& v) : vts(v)
+    AmpProcessor(AudioProcessorValueTreeState &v) : vts(v),
+                                                    preAmp(static_cast<strix::FloatParameter *>(vts.getParameter("gain")), static_cast<strix::ChoiceParameter *>(vts.getParameter("mode")), static_cast<strix::ChoiceParameter *>(vts.getParameter("channel"))),
+                                                    eq(vts),
+                                                    powerAmp(static_cast<strix::FloatParameter*>(vts.getParameter("master")), static_cast<strix::ChoiceParameter*>(vts.getParameter("channel")))
     {
         inputGain = vts.getRawParameterValue("gain");
         outGain = vts.getRawParameterValue("master");
         tsXGain = vts.getRawParameterValue("tsXgain");
-        bright = vts.getRawParameterValue("bright");
         channel = vts.getRawParameterValue("channel");
     }
 
-	void prepare(const dsp::ProcessSpec& spec) noexcept
-	{
-		ts9.prepare(spec);
-		highPass.prepare(spec);
-		bandPass.prepare(spec);
-		lowPass.prepare(spec);
-		preAmp.prepare(spec);
-		bass.prepare(spec);
-		mid.prepare(spec);
-		treble.prepare(spec);
-		presence.prepare(spec);
-		brightShelf.prepare(spec);
-		powerAmp.prepare(spec);
+    void prepare(const dsp::ProcessSpec &spec) noexcept
+    {
+        ts9.prepare(spec);
+        preAmp.prepare(spec);
+        eq.prepare(spec);
+        powerAmp.prepare(spec);
 
-		highPass.coefficients = (dsp::IIR::Coefficients<double>::makeFirstOrderHighPass(spec.sampleRate, 750.f));
-		bandPass.coefficients = (dsp::IIR::Coefficients<double>::makeBandPass(spec.sampleRate, 80.f));
-		lowPass.coefficients = (dsp::IIR::Coefficients<double>::makeFirstOrderLowPass(spec.sampleRate, 10000.f));
-		brightShelf.coefficients = (dsp::IIR::Coefficients<double>::makeHighShelf(spec.sampleRate, 2500.0, 0.707, 2.0));
-	}
-
-	void reset()
-	{
-		ts9.reset();
-		preAmp.reset();
-		powerAmp.reset();
-		highPass.reset();
-		bandPass.reset();
-		lowPass.reset();
-		bass.reset();
-		mid.reset();
-		treble.reset();
-		presence.reset();
-		brightShelf.reset();
-	}
-
-	inline void updateFilters(double sampleRate, float bassGain, float midGain, float trebleGain,
-		float presenceGain) noexcept
-	{
-	    // float currentBass = bassGain;
-		// float currentMid = midGain;
-		// float currentTreble = trebleGain;
-		// float currentPres = presenceGain;
-
-		// if (currentBass != lastBass)
-		// 	currentBass = 0.1f * currentBass + (1.0 - 0.1f) * lastBass;
-		// lastBass = currentBass;
-
-		// if (currentMid != lastMid)
-		// 	currentMid = 0.1f * currentMid + (1.0 - 0.1f) * lastMid;
-		// lastMid = currentMid;
-
-		// if (currentTreble != lastTreble)
-		// 	currentTreble = 0.1f * currentTreble + (1.0 - 0.1f) * lastTreble;
-		// lastTreble = currentTreble;
-
-		// if (currentPres != lastPres)
-		// 	currentPres = 0.1f * currentPres + (1.0 - 0.1f) * lastPres;
-		// lastPres = currentPres;
-	    
-		bass.coefficients = (dsp::IIR::Coefficients<double>::makeLowShelf(sampleRate, 150.f, 0.606f, bassGain));
-		mid.coefficients = (dsp::IIR::Coefficients<double>::makePeakFilter(sampleRate, 600.f, 0.5f, midGain));
-		treble.coefficients = (dsp::IIR::Coefficients<double>::makeHighShelf(sampleRate, 1500.f, 0.3f, trebleGain));
-		presence.coefficients = (dsp::IIR::Coefficients<double>::makePeakFilter(sampleRate, 4000.f, 0.6f, presenceGain));
-	}
-
-    template <typename Block>
-	inline void processAmp(Block& block)
-	{
-        auto tsX = tsXGain->load();
-        bool b = (bool)bright->load();
-        auto inGain = inputGain->load();
-        auto out = outGain->load();
-
-        auto in = block.getChannelPointer(0);
-
-        if (tsX > 0.f)
-            ts9.process(in, tsX, block.getNumSamples());
-        
-        if (!*channel)
-            preAmp.processLoGain(in, inGain, block.getNumSamples());
-        else
-            preAmp.processHiGain(in, inGain, block.getNumSamples());
-
-        for (int i = 0; i < block.getNumSamples(); ++i)
-        {
-            in[i] = lowPass.processSample(in[i]);
-
-            T xHPF = highPass.processSample(in[i]);
-            T xBPF = bandPass.processSample(in[i]);
-            in[i] = xHPF + xBPF;
-            in[i] = bass.processSample(in[i]);
-            in[i] = mid.processSample(in[i]);
-            in[i] = treble.processSample(in[i]);
-            in[i] = presence.processSample(in[i]);
-            if (b)
-                in[i] = brightShelf.processSample(in[i]);
-        }
-
-        if (!*channel)
-            powerAmp.processLoGain(in, out, block.getNumSamples());
-        else
-            powerAmp.processHiGain(in, out, block.getNumSamples());
+        SR = spec.sampleRate;
     }
 
-	TS9<T> ts9;
+    void reset()
+    {
+        ts9.reset();
+        preAmp.reset();
+        eq.reset();
+        powerAmp.reset();
+    }
 
-	PreAmp<T> preAmp;
+    template <typename Block>
+    inline void processAmp(Block &block)
+    {
+        auto tsX = tsXGain->load();
 
-	ClassBValvePair<T> powerAmp;
-	
-private:
-    float lastBass, lastMid, lastTreble, lastPres = 0.f;
+        for (size_t ch = 0; ch < block.getNumChannels(); ++ch)
+        {
+            auto in = block.getChannelPointer(ch);
+            if (tsX > 0.f)
+                ts9.process(in, tsX, block.getNumSamples());
+        }
+
+        preAmp.process(block);
+        eq.process(block);
+        powerAmp.process(block);
+    }
+
+    TS9<T> ts9;
+    PreAmp<T> preAmp;
+    ToneSection<T> eq;
+    ClassBValvePair<T> powerAmp;
 };
 
 //=======================================================================
