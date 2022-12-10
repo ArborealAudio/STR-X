@@ -25,9 +25,9 @@ STRXAudioProcessor::STRXAudioProcessor()
 
 #endif
 {
-    oversample.add(std::make_unique<dsp::Oversampling<double>>(2));
-    oversample.add(std::make_unique<dsp::Oversampling<double>>(2, 2, dsp::Oversampling<double>::FilterType::filterHalfBandPolyphaseIIR, false, true));
-    oversample.add(std::make_unique<dsp::Oversampling<double>>(2, 2, dsp::Oversampling<double>::FilterType::filterHalfBandFIREquiripple, true, true));
+    oversample.emplace_back(std::make_unique<dsp::Oversampling<double>>(2));
+    oversample.emplace_back(std::make_unique<dsp::Oversampling<double>>(2, 2, dsp::Oversampling<double>::FilterType::filterHalfBandPolyphaseIIR, false, true));
+    oversample.emplace_back(std::make_unique<dsp::Oversampling<double>>(2, 2, dsp::Oversampling<double>::FilterType::filterHalfBandFIREquiripple, true, true));
 
     lastUIWidth = 775;
     lastUIHeight = 500;
@@ -131,7 +131,7 @@ void STRXAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 
     doubleBuffer.setSize(getTotalNumInputChannels(), samplesPerBlock);
 
-    simd.setInterleavedBlockSize(spec.numChannels, samplesPerBlock);
+    simd.setInterleavedBlockSize(spec.numChannels, spec.maximumBlockSize);
 }
 
 void STRXAudioProcessor::releaseResources()
@@ -179,67 +179,11 @@ void STRXAudioProcessor::updateOversample()
 
 void STRXAudioProcessor::parameterChanged(const String &parameterID, float)
 {
-    if (parameterID == "renderHQ" || parameterID == "hq")
     {
-        updateOversample();
-
-        dsp::ProcessSpec newSpec;
-        newSpec.sampleRate = lastSampleRate;
-        newSpec.maximumBlockSize = numSamples;
-        newSpec.numChannels = getTotalNumInputChannels();
-
-        suspendProcessing(true);
-        amp.prepare(newSpec);
-        suspendProcessing(false);
+        std::unique_lock<std::mutex> lock(mutex);
+        msgs.emplace(parameterID);
     }
-    else if (parameterID == "legacyTone")
-    {
-        suspendProcessing(true);
-        amp.eq.updateAllFilters();
-        suspendProcessing(false);
-    }
-    else if (parameterID == "mode")
-        amp.preAmp.needCrossoverUpdate = true;
-}
-
-void STRXAudioProcessor::updateFilters()
-{
-    float bassParam = *apvts.getRawParameterValue("bass");
-    float midParam = *apvts.getRawParameterValue("mid");
-    float trebleParam = *apvts.getRawParameterValue("treble");
-    float presenceParam = *apvts.getRawParameterValue("presence");
-
-    bassParam /= 10;
-    midParam /= 10;
-    trebleParam /= 10;
-    presenceParam /= 10;
-
-    float bassCook = 0.0, midCook = 0.0, trebleCook = 0.0, presenceCook = 0.0;
-
-    if (!*legacyTone)
-    {
-        // convert 0 - 1 value into a dB value
-        bassCook = jmap(bassParam, -12.f, 12.f);
-        midCook = jmap(midParam, -7.f, 7.f);
-        trebleCook = jmap(trebleParam, -14.f, 14.f);
-        presenceCook = jmap(presenceParam, -8.f, 8.f);
-
-        // convert to linear multiplier
-        bassCook = pow(10, (bassCook / 20));
-        midCook = pow(10, (midCook / 20));
-        trebleCook = pow(10, (trebleCook / 20));
-        presenceCook = pow(10, (presenceCook / 20));
-    }
-    else
-    {
-        // convert 0 - 1 value into legacy linear values
-        bassCook = cookParams(bassParam, 0.2f, 1.666f);
-        midCook = cookParams(midParam, 0.3f, 2.2f);
-        trebleCook = cookParams(trebleParam, 0.2f, 3.0f);
-        presenceCook = cookParams(presenceParam, 0.4f, 2.5f);
-    }
-
-    // amp.updateFilters(lastSampleRate, bassCook, midCook, trebleCook, presenceCook);
+    newMessages = true;
 }
 
 void STRXAudioProcessor::processBlock(AudioBuffer<float> &buffer, MidiBuffer &midiMessages)
@@ -272,6 +216,9 @@ void STRXAudioProcessor::processBlock(AudioBuffer<double> &buffer, MidiBuffer &)
 
 void STRXAudioProcessor::processDoubleBuffer(AudioBuffer<double> &buffer)
 {
+    if (newMessages)
+        handleMessage();
+    
     float out_raw = std::pow(10, (*outVol_dB * 0.05f));
 
     dsp::AudioBlock<double> block(buffer);

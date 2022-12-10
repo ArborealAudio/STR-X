@@ -74,11 +74,9 @@ public:
     
     void updateOversample();
     
-    void updateFilters();
-
     AudioProcessorValueTreeState apvts;
 
-    OwnedArray<dsp::Oversampling<double>> oversample;
+    std::vector<std::unique_ptr<dsp::Oversampling<double>>> oversample;
 
     int lastUIWidth, lastUIHeight;
 
@@ -95,7 +93,7 @@ private:
 
     NormalisableRange<float> nRange, outVolRange;
 
-    std::atomic<float>* hq, *renderHQ, *outVol_dB, *legacyTone;
+    std::atomic<float>* hq, *renderHQ, *outVol_dB;
 
     AudioBuffer<double> doubleBuffer;
 #if USE_SIMD
@@ -105,6 +103,40 @@ private:
 #endif
 
     strix::SIMD<double, dsp::AudioBlock<double>, strix::AudioBlock<vec>> simd;
+
+    std::queue<String> msgs;
+    std::mutex mutex;
+    std::atomic<bool> newMessages = false;
+
+    void handleMessage()
+    {
+        int num = msgs.size();
+        for (size_t i = 0; i < num; ++i)
+        {
+            auto &msg = msgs.front();
+            if (msg == "renderHQ" || msg == "hq")
+            {
+                updateOversample();
+
+                dsp::ProcessSpec newSpec;
+                newSpec.sampleRate = lastSampleRate;
+                newSpec.maximumBlockSize = numSamples * oversample[osIndex]->getOversamplingFactor();
+                newSpec.numChannels = getTotalNumInputChannels();
+
+                amp.prepare(newSpec);
+
+                simd.setInterleavedBlockSize(newSpec.numChannels, newSpec.maximumBlockSize);
+            }
+            else if (msg == "legacyTone")
+                amp.eq.updateAllFilters();
+            else if (msg == "mode")
+                amp.preAmp.needCrossoverUpdate = true;
+
+            msgs.pop();
+        }
+
+        newMessages = false;
+    }
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (STRXAudioProcessor)
