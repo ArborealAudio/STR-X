@@ -4,13 +4,13 @@
 
 struct AmpComponent : Component
 {
-    AmpComponent(AudioProcessorValueTreeState &vts, CustomLookAndFeel *lnf_) : apvts(vts), lnf(*lnf_),
+    AmpComponent(AudioProcessorValueTreeState &vts, CustomLookAndFeel *lnf_) : apvts(vts), lnf(lnf_),
                                                                                channel(static_cast<strix::ChoiceParameter *>(vts.getParameter("channel")))
     {
-        for (auto &k : getKnobs())
+        for (auto *k : getKnobs())
         {
             k->setSliderStyle(Slider::SliderStyle::RotaryVerticalDrag);
-            k->setLookAndFeel(&lnf);
+            k->setLookAndFeel(lnf);
             k->setTextBoxStyle(Slider::NoTextBox, true, 0, 0);
             k->setPopupDisplayEnabled(true, true, this);
             addAndMakeVisible(*k);
@@ -18,18 +18,18 @@ struct AmpComponent : Component
 
         addAndMakeVisible(brightButton);
         brightButton.setButtonText("BRIGHT");
-        brightButton.setLookAndFeel(&lnf);
+        brightButton.setLookAndFeel(lnf);
         brightButton.setClickingTogglesState(true);
 
         addAndMakeVisible(channelButton);
         channelButton.setButtonText("HI GAIN");
-        channelButton.setLookAndFeel(&lnf);
+        channelButton.setLookAndFeel(lnf);
         channelButton.setClickingTogglesState(true);
 
         StringArray modes{"THICK", "NORMAL", "OPEN"};
         mode.addItemList(modes, 1);
         mode.setSelectedItemIndex(1);
-        mode.setLookAndFeel(&lnf);
+        mode.setLookAndFeel(lnf);
         mode.setTooltip("Switches the voicing of the preamp\n\nThick = Split @ 100Hz\nNormal = Split @ 250Hz\nOpen = Split @ 400Hz");
         addAndMakeVisible(mode);
 
@@ -108,7 +108,7 @@ struct AmpComponent : Component
 
 private:
     AudioProcessorValueTreeState &apvts;
-    CustomLookAndFeel &lnf;
+    CustomLookAndFeel *lnf;
 
     Slider ts9Gain, inputGain, bass, mid, treble, presence, outGain;
     std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> ts9Attach, inputGainAttach, bassAttach, midAttach, trebleAttach, presenceAttach, outGainAttach;
