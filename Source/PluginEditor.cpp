@@ -11,13 +11,12 @@
 
 //==============================================================================
 STRXAudioProcessorEditor::STRXAudioProcessorEditor (STRXAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p), amp(p.apvts), background(p.apvts)
+    : AudioProcessorEditor (&p), customLookAndFeel(p.apvts), background(p.apvts), amp(p.apvts, &customLookAndFeel), audioProcessor(p)
 {
     tooltipWindow.setMillisecondsBeforeTipAppears(1000);
 
     channel = p.apvts.getRawParameterValue("channel");
-
-    customLookAndFeel.channel = channel;
+    p.apvts.addParameterListener("channel", this);
 
     addAndMakeVisible(background);
 
@@ -60,26 +59,26 @@ STRXAudioProcessorEditor::STRXAudioProcessorEditor (STRXAudioProcessor& p)
     getConstrainer()->setMinimumSize(500, 323);
     getConstrainer()->setFixedAspectRatio(1.55);
     setSize (p.lastUIWidth, p.lastUIHeight);
-
-    startTimerHz(10);
 }
 
 STRXAudioProcessorEditor::~STRXAudioProcessorEditor()
 {
-    stopTimer();
+    audioProcessor.apvts.removeParameterListener("channel", this);
+    hqButton.setLookAndFeel(nullptr);
+    renderHQ.setLookAndFeel(nullptr);
 }
 
 //==============================================================================
 void STRXAudioProcessorEditor::paint (Graphics& g)
 {
-    g.fillAll(lastChannelState ? Colours::black : Colours::grey);
+    g.fillAll(*channel ? Colours::black : Colours::grey);
 }
 
 void STRXAudioProcessorEditor::resized()
 {
     auto bounds = getLocalBounds().reduced(10);
-    auto w = bounds.getWidth();
-    auto h = bounds.getHeight();
+    const auto w = bounds.getWidth();
+    const auto h = bounds.getHeight();
 
     background.setBounds(bounds.removeFromTop(h / 3));
 

@@ -2,14 +2,12 @@
 
 #pragma once
 
-struct AmpComponent : Component, private Timer
+struct AmpComponent : Component
 {
-    AmpComponent(AudioProcessorValueTreeState& vts) : apvts(vts)
+    AmpComponent(AudioProcessorValueTreeState &vts, CustomLookAndFeel *lnf_) : apvts(vts), lnf(*lnf_),
+                                                                               channel(static_cast<strix::ChoiceParameter *>(vts.getParameter("channel")))
     {
-        channel = apvts.getRawParameterValue("channel");
-        lnf.channel = channel;
-
-        for (auto& k : getKnobs())
+        for (auto &k : getKnobs())
         {
             k->setSliderStyle(Slider::SliderStyle::RotaryVerticalDrag);
             k->setLookAndFeel(&lnf);
@@ -30,48 +28,45 @@ struct AmpComponent : Component, private Timer
 
         StringArray modes{"THICK", "NORMAL", "OPEN"};
         mode.addItemList(modes, 1);
-        mode.setSelectedItemIndex (1);
+        mode.setSelectedItemIndex(1);
         mode.setLookAndFeel(&lnf);
         mode.setTooltip("Switches the voicing of the preamp\n\nThick = Split @ 100Hz\nNormal = Split @ 250Hz\nOpen = Split @ 400Hz");
         addAndMakeVisible(mode);
 
         inputGainAttach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts, "gain", inputGain);
-        ts9Attach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts,"tsXgain", ts9Gain);
-        modeAttach = std::make_unique<AudioProcessorValueTreeState::ComboBoxAttachment>(apvts,"mode", mode);
-        bassAttach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts,"bass", bass);
-        midAttach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts,"mid", mid);
-        trebleAttach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts,"treble", treble);
-        presenceAttach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts,"presence", presence);
-        brightAttach = std::make_unique<AudioProcessorValueTreeState::ButtonAttachment>(apvts,"bright", brightButton);
+        ts9Attach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts, "tsXgain", ts9Gain);
+        modeAttach = std::make_unique<AudioProcessorValueTreeState::ComboBoxAttachment>(apvts, "mode", mode);
+        bassAttach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts, "bass", bass);
+        midAttach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts, "mid", mid);
+        trebleAttach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts, "treble", treble);
+        presenceAttach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts, "presence", presence);
+        brightAttach = std::make_unique<AudioProcessorValueTreeState::ButtonAttachment>(apvts, "bright", brightButton);
         channelAttach = std::make_unique<AudioProcessorValueTreeState::ButtonAttachment>(apvts, "channel", channelButton);
         outGainAttach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts, "master", outGain);
-
-        startTimerHz(10);
     }
 
     ~AmpComponent()
     {
-        stopTimer();
+        for (auto *k : getKnobs())
+            k->setLookAndFeel(nullptr);
+        brightButton.setLookAndFeel(nullptr);
+        channelButton.setLookAndFeel(nullptr);
+        mode.setLookAndFeel(nullptr);
+        channel = nullptr;
     }
 
-    void timerCallback() override
-    {
-        if (lastChannelState != *channel)
-            repaint(getLocalBounds());
-
-        lastChannelState = *channel;
-    }
-
-    void paint(Graphics& g) override
+    void paint(Graphics &g) override
     {
         auto bounds = getLocalBounds().reduced(3);
         auto w = bounds.getWidth();
         auto h = bounds.getHeight();
 
-        g.setColour(*channel ? Colours::black : Colour(BLUE_BG));
+        const int ch_ = *channel;
+
+        g.setColour(ch_ ? Colours::black : Colour(BLUE_BG));
         g.fillRoundedRectangle(bounds.toFloat(), 10.f);
 
-        g.setColour(*channel ? Colours::whitesmoke : Colours::wheat);
+        g.setColour(ch_ ? Colours::whitesmoke : Colours::wheat);
 
         Path ltr;
         ltr.startNewSubPath(bounds.getX() + 8, bounds.getY() + 5);
@@ -84,7 +79,7 @@ struct AmpComponent : Component, private Timer
         g.strokePath(ltr, PathStrokeType(4.f, PathStrokeType::JointStyle::curved, PathStrokeType::EndCapStyle::rounded));
         g.strokePath(rtl, PathStrokeType(4.f, PathStrokeType::JointStyle::curved, PathStrokeType::EndCapStyle::rounded));
 
-        g.setColour(*channel ? Colour(GREEN) : Colours::wheat);
+        g.setColour(ch_ ? Colour(GREEN) : Colours::wheat);
         g.drawRoundedRectangle(bounds.toFloat(), 10.f, 5.f);
     }
 
@@ -96,7 +91,7 @@ struct AmpComponent : Component, private Timer
         auto h = controls.getHeight();
         auto chunk = w / 7;
 
-        for (auto& k : getKnobs())
+        for (auto &k : getKnobs())
             k->setBounds(controls.removeFromLeft(chunk).reduced(chunk * 0.1f));
 
         mode.setSize(jmax(100.f, w * 0.15f), jmax(35.f, h * 0.3f));
@@ -113,7 +108,7 @@ struct AmpComponent : Component, private Timer
 
 private:
     AudioProcessorValueTreeState &apvts;
-    CustomLookAndFeel lnf;
+    CustomLookAndFeel &lnf;
 
     Slider ts9Gain, inputGain, bass, mid, treble, presence, outGain;
     std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> ts9Attach, inputGainAttach, bassAttach, midAttach, trebleAttach, presenceAttach, outGainAttach;
@@ -124,10 +119,9 @@ private:
     TextButton brightButton, channelButton;
     std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> brightAttach, channelAttach;
 
-    std::atomic<float> *channel;
-    bool lastChannelState = true;
+    strix::ChoiceParameter *channel = nullptr;
 
-    std::vector<Slider*> getKnobs()
+    std::vector<Slider *> getKnobs()
     {
         return {
             &ts9Gain,
@@ -136,7 +130,6 @@ private:
             &mid,
             &treble,
             &presence,
-            &outGain
-        };
+            &outGain};
     }
 };

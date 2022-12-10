@@ -18,7 +18,7 @@
 
 static Typeface::Ptr getCustomFont()
 {
-    return Typeface::createSystemTypefaceFor(BinaryData::menlo_ttc, BinaryData::menlo_ttcSize);
+    return Typeface::createSystemTypefaceFor(BinaryData::MenloRegular_ttf, BinaryData::MenloRegular_ttfSize);
 }
 
 #include "Background.hpp"
@@ -27,30 +27,30 @@ static Typeface::Ptr getCustomFont()
 
 //==============================================================================
 /**
-*/
+ */
 
-class STRXAudioProcessorEditor  : public AudioProcessorEditor, private Timer
+class STRXAudioProcessorEditor : public AudioProcessorEditor,
+                                 private AudioProcessorValueTreeState::Listener
 {
 public:
-    STRXAudioProcessorEditor (STRXAudioProcessor&);
+    STRXAudioProcessorEditor(STRXAudioProcessor &);
     ~STRXAudioProcessorEditor() override;
 
     //==============================================================================
-    void paint (Graphics&) override;
+    void paint(Graphics &) override;
     void resized() override;
 
-    void timerCallback() override
+    void parameterChanged(const String &parameterID, float newValue) override
     {
-        if (channel && *channel != lastChannelState) {
+        if (parameterID == "channel")
+        {
+            outVol.setColour(outVol.trackColourId, newValue ? Colour(GREEN) : Colours::wheat);
             repaint();
-            lastChannelState = *channel;
-            outVol.setColour(outVol.trackColourId, lastChannelState ? Colour(GREEN) : Colours::wheat);
         }
     }
 
 private:
     std::atomic<float> *channel;
-    bool lastChannelState = false;
 
     CustomLookAndFeel customLookAndFeel;
 
@@ -59,17 +59,17 @@ private:
 
     TextButton hqButton, renderHQ;
     std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> hqButtonAttach, renderButtonAttach;
-    
+
     ToggleButton legacyTone;
     std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> legacyToneAttach;
-    
+
     Background background;
 
     AmpComponent amp;
 
     TooltipWindow tooltipWindow;
 
-    STRXAudioProcessor& audioProcessor;
+    STRXAudioProcessor &audioProcessor;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (STRXAudioProcessorEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(STRXAudioProcessorEditor)
 };

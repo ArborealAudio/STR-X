@@ -3,27 +3,16 @@
 #pragma once
 
 /* component for drawing plugin title, logo, version info */
-struct Background : Component, private Timer
+struct Background : Component
 {
-    Background(AudioProcessorValueTreeState& v)
+    Background(AudioProcessorValueTreeState &v) : channel(static_cast<strix::ChoiceParameter *>(v.getParameter("channel")))
     {
         strix = Drawable::createFromImageData(BinaryData::strx_svg, BinaryData::strx_svgSize);
-
-        channel = v.getRawParameterValue("channel");
-
-        startTimerHz(10);
     }
 
-    ~Background() override
+    ~Background()
     {
-        stopTimer();
-    }
-
-    void timerCallback() override
-    {
-        if (lastChannelState != *channel)
-            repaint(getLocalBounds());
-        lastChannelState = *channel;
+        channel = nullptr;
     }
 
     void paint(Graphics &g) override
@@ -33,18 +22,14 @@ struct Background : Component, private Timer
         auto textbounds = getLocalBounds().reduced(getWidth() * 0.1f, 0);
         g.fillRoundedRectangle(textbounds.reduced(10).toFloat(), 10.f);
 
-        strix->drawWithin(g, getLocalBounds().toFloat(), RectanglePlacement::xLeft, 1.f);
+        strix->drawWithin(g, getLocalBounds().toFloat(), RectanglePlacement::centred, 1.f);
 
         g.setColour(*channel ? Colour(GREEN) : Colours::wheat);
         g.drawRoundedRectangle(textbounds.toFloat().reduced(10), 10.f, 3.f);
     }
 
-    void resized() override
-    {}
-
 private:
     std::unique_ptr<Drawable> strix;
 
-    std::atomic<float> *channel;
-    bool lastChannelState = true;
+    strix::ChoiceParameter *channel = nullptr;
 };
