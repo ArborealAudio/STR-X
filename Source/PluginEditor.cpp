@@ -90,6 +90,6 @@ void STRXAudioProcessorEditor::resized()
     renderHQ.setBounds(bounds.removeFromLeft(w * 0.15f));
     legacyTone.setBounds(bounds.removeFromRight(w * 0.2f));
 
-    audioProcessor.lastUIWidth = w;
-    audioProcessor.lastUIHeight = h;
+    audioProcessor.lastUIWidth = getWidth();
+    audioProcessor.lastUIHeight = getHeight();
 }
