@@ -201,7 +201,7 @@ private:
 
     inline Type processSampleHiGain(Type xn)
     {
-        Type gain_ = gain.getNextValue() * 8.f;
+        float gain_ = gain.getNextValue() * 8.f;
         Type yn = 0.0, xnL = 0.0, xnH = 0.0;
 
         xn *= gain_;
@@ -227,7 +227,7 @@ private:
 
     inline Type processSampleLoGain(Type xn)
     {
-        Type gain_ = gain.getNextValue() * 4.f;
+        float gain_ = gain.getNextValue() * 4.f;
         Type yn = 0.0, xnL = 0.0, xnH = 0.0;
 
         xn *= gain_;
