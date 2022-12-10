@@ -38,7 +38,7 @@ clap_juce_extensions_plugin(TARGET STR-X
 juce_generate_juce_header(STR-X)
 
 juce_add_modules(
-    "$ENV{HOME}/modules/Arbor_modules")
+    "modules/Arbor_modules")
 
 target_sources(STR-X
     PRIVATE
