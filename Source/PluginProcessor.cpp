@@ -132,7 +132,7 @@ void STRXAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
     stereoAmp.preAmp.updateCrossover(*apvts.getRawParameterValue("mode"));
     monoAmp.preAmp.updateCrossover(*apvts.getRawParameterValue("mode"));
 
-    doubleBuffer.setSize(getTotalNumInputChannels(), samplesPerBlock);
+    doubleBuffer.setSize(spec.numChannels, spec.maximumBlockSize);
 
     simd.setInterleavedBlockSize(spec.numChannels, spec.maximumBlockSize);
 }
