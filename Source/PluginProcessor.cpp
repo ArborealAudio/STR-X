@@ -21,7 +21,7 @@ STRXAudioProcessor::STRXAudioProcessor()
 #endif
                          ),
       apvts(*this, nullptr, "Parameters", createParameters()),
-      amp(apvts)
+      stereoAmp(apvts), monoAmp(apvts)
 
 #endif
 {
@@ -31,9 +31,10 @@ STRXAudioProcessor::STRXAudioProcessor()
 
     lastUIWidth = 775;
     lastUIHeight = 500;
-    hq = apvts.getRawParameterValue("hq");
-    renderHQ = apvts.getRawParameterValue("renderHQ");
-    outVol_dB = apvts.getRawParameterValue("outVol");
+    hq = static_cast<strix::BoolParameter*>(apvts.getParameter("hq"));
+    renderHQ = static_cast<strix::BoolParameter*>(apvts.getParameter("renderHQ"));
+    stereo = static_cast<strix::ChoiceParameter*>(apvts.getParameter("stereo"));
+    outVol_dB = static_cast<strix::FloatParameter*>(apvts.getParameter("outVol"));
     apvts.addParameterListener("mode", this);
     apvts.addParameterListener("legacyTone", this);
     apvts.addParameterListener("hq", this);
@@ -126,8 +127,10 @@ void STRXAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
     for (auto &ovs : oversample)
         ovs->initProcessing(samplesPerBlock);
 
-    amp.prepare(spec);
-    amp.preAmp.updateCrossover(*apvts.getRawParameterValue("mode"));
+    stereoAmp.prepare(spec);
+    monoAmp.prepare(spec);
+    stereoAmp.preAmp.updateCrossover(*apvts.getRawParameterValue("mode"));
+    monoAmp.preAmp.updateCrossover(*apvts.getRawParameterValue("mode"));
 
     doubleBuffer.setSize(getTotalNumInputChannels(), samplesPerBlock);
 
@@ -139,7 +142,8 @@ void STRXAudioProcessor::releaseResources()
     for (auto &oversampler : oversample)
         oversampler->reset();
 
-    amp.reset();
+    stereoAmp.reset();
+    monoAmp.reset();
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -218,25 +222,25 @@ void STRXAudioProcessor::processDoubleBuffer(AudioBuffer<double> &buffer)
 {
     if (newMessages)
         handleMessage();
-    
+
     float out_raw = std::pow(10, (*outVol_dB * 0.05f));
 
     dsp::AudioBlock<double> block(buffer);
 
     auto osBlock = oversample[osIndex]->processSamplesUp(block);
 
-#if USE_SIMD
-    auto simdBlock = simd.interleaveBlock(osBlock);
-    auto &&processBlock = simdBlock;
-#else
-    auto &&processBlock = osBlock;
-#endif
-
-    amp.processAmp(processBlock);
-
-#if USE_SIMD
-    simd.deinterleaveBlock(processBlock);
-#endif
+    if (stereo->getIndex())
+    {
+        auto simdBlock = simd.interleaveBlock(osBlock);
+        stereoAmp.processAmp(simdBlock);
+        simd.deinterleaveBlock(simdBlock);
+    }
+    else
+    {
+        auto mono = osBlock.getSingleChannelBlock(0);
+        monoAmp.processAmp(mono);
+        FloatVectorOperations::copy(osBlock.getChannelPointer(1), mono.getChannelPointer(0), mono.getNumSamples());
+    }
 
     oversample[osIndex]->processSamplesDown(block);
     block *= out_raw;
@@ -301,7 +305,7 @@ AudioProcessorValueTreeState::ParameterLayout STRXAudioProcessor::createParamete
     using cParam = strix::ChoiceParameter;
 
     params.push_back(std::make_unique<fParam>(ParameterID("gain", 1), "Preamp Gain", gainRange, 3.f));
-    params.push_back(std::make_unique<cParam>(ParameterID("mode", 1), "Mode", juce::StringArray{"Thick", "Normal", "Open"}, 1));
+    params.push_back(std::make_unique<cParam>(ParameterID("mode", 1), "Mode", StringArray{"Thick", "Normal", "Open"}, 1));
     params.push_back(std::make_unique<fParam>(ParameterID("bass", 1), "Bass", nRange, 5.f));
     params.push_back(std::make_unique<fParam>(ParameterID("mid", 1), "Mid", nRange, 5.f));
     params.push_back(std::make_unique<fParam>(ParameterID("treble", 1), "Treble", nRange, 5.f));
@@ -314,6 +318,7 @@ AudioProcessorValueTreeState::ParameterLayout STRXAudioProcessor::createParamete
     params.push_back(std::make_unique<bParam>(ParameterID("hq", 1), "HQ", false));
     params.push_back(std::make_unique<bParam>(ParameterID("renderHQ", 1), "Render HQ", false));
     params.push_back(std::make_unique<bParam>(ParameterID("legacyTone", 1), "Use Legacy Tone Controls", false));
+    params.push_back(std::make_unique<cParam>(ParameterID("stereo", 1), "Mono/Stereo", StringArray{"Mono", "Stereo"}, 0));
 
     return {params.begin(), params.end()};
 }

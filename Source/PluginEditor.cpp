@@ -45,6 +45,10 @@ STRXAudioProcessorEditor::STRXAudioProcessorEditor (STRXAudioProcessor& p)
     addAndMakeVisible(renderHQ);
     renderHQ.setTooltip("Enables 4x oversampling during rendering, using higher quality filters with fully linear phase");
 
+    addAndMakeVisible(stereo);
+    stereo.lnf = &customLookAndFeel;
+    stereoAttach = std::make_unique<AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, "stereo", stereo);
+
     legacyTone.setButtonText("Use v1.0 tone controls");
     legacyTone.setClickingTogglesState(true);
     legacyTone.setRepaintsOnMouseActivity(true);
@@ -88,6 +92,7 @@ void STRXAudioProcessorEditor::resized()
 
     hqButton.setBounds(bounds.removeFromLeft(w * 0.1f));
     renderHQ.setBounds(bounds.removeFromLeft(w * 0.15f));
+    stereo.setBounds(bounds.removeFromLeft(w * 0.15f));
     legacyTone.setBounds(bounds.removeFromRight(w * 0.2f));
 
     audioProcessor.lastUIWidth = getWidth();

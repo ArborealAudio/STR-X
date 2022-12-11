@@ -18,9 +18,9 @@ static float cookParams(float valueToCook, float minValue, float maxValue)
 
 #include "STR-X.hpp"
 
-#if NDEBUG
-    #define USE_SIMD 1
-#endif
+// #if NDEBUG
+#define USE_SIMD 1
+// #endif
 
 //==============================================================================
 /**
@@ -93,14 +93,14 @@ private:
 
     NormalisableRange<float> nRange, outVolRange;
 
-    std::atomic<float>* hq, *renderHQ, *outVol_dB;
+    strix::BoolParameter *hq, *renderHQ;
+    strix::ChoiceParameter *stereo;
+    strix::FloatParameter *outVol_dB;
 
     AudioBuffer<double> doubleBuffer;
-#if USE_SIMD
-    AmpProcessor<vec> amp;
-#else
-    AmpProcessor<double> amp;
-#endif
+
+    AmpProcessor<vec> stereoAmp;
+    AmpProcessor<double> monoAmp;
 
     strix::SIMD<double, dsp::AudioBlock<double>, strix::AudioBlock<vec>> simd;
 
@@ -123,14 +123,21 @@ private:
                 newSpec.maximumBlockSize = numSamples * oversample[osIndex]->getOversamplingFactor();
                 newSpec.numChannels = getTotalNumInputChannels();
 
-                amp.prepare(newSpec);
+                stereoAmp.prepare(newSpec);
+                monoAmp.prepare(newSpec);
 
                 simd.setInterleavedBlockSize(newSpec.numChannels, newSpec.maximumBlockSize);
             }
             else if (msg == "legacyTone")
-                amp.eq.updateAllFilters();
+            {
+                stereoAmp.eq.updateAllFilters();
+                monoAmp.eq.updateAllFilters();
+            }
             else if (msg == "mode")
-                amp.preAmp.needCrossoverUpdate = true;
+            {
+                stereoAmp.preAmp.needCrossoverUpdate = true;
+                monoAmp.preAmp.needCrossoverUpdate = true;
+            }
 
             msgs.pop();
         }

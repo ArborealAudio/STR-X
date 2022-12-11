@@ -25,6 +25,35 @@ static Typeface::Ptr getCustomFont()
 #include "LookAndFeel.h"
 #include "AmpComponent.hpp"
 
+struct StereoButton : TextButton
+{
+    StereoButton()
+    {
+        setClickingTogglesState(true);
+    }
+
+    CustomLookAndFeel *lnf;
+
+    void paint(Graphics &g) override
+    {
+        auto bounds = getLocalBounds().reduced(5).toFloat();
+        g.setColour(lnf->buttonBackground);
+        g.drawRoundedRectangle(bounds, 3.f, 2.f);
+
+        auto ellipseWidth = jmin(bounds.getHeight() * 0.75f, bounds.getWidth() * 0.75f);
+        g.setColour(lnf->accentColor);
+        if (getToggleState())
+        {
+            g.drawEllipse(bounds.getCentreX() * 0.8f - (ellipseWidth / 2), bounds.getCentreY() - (ellipseWidth / 2), ellipseWidth, ellipseWidth, 3.f);
+            g.drawEllipse(bounds.getCentreX() * 1.2f - (ellipseWidth / 2), bounds.getCentreY() - (ellipseWidth / 2), ellipseWidth, ellipseWidth, 3.f);
+        }
+        else
+        {
+            g.drawEllipse(bounds.getCentreX() - (ellipseWidth / 2), bounds.getCentreY() - (ellipseWidth / 2), ellipseWidth, ellipseWidth, 3.f);
+        }
+    }
+};
+
 //==============================================================================
 /**
  */
@@ -58,7 +87,8 @@ private:
     std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> outVolAttachment;
 
     TextButton hqButton, renderHQ;
-    std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> hqButtonAttach, renderButtonAttach;
+    StereoButton stereo;
+    std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> hqButtonAttach, renderButtonAttach, stereoAttach;
 
     ToggleButton legacyTone;
     std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> legacyToneAttach;
