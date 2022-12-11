@@ -12,9 +12,16 @@ struct AmpComponent : Component
             k->setSliderStyle(Slider::SliderStyle::RotaryVerticalDrag);
             k->setLookAndFeel(lnf);
             k->setTextBoxStyle(Slider::NoTextBox, true, 0, 0);
-            k->setPopupDisplayEnabled(true, true, this);
             addAndMakeVisible(*k);
         }
+
+        ts9Gain.label = "X";
+        inputGain.label = "GAIN";
+        bass.label = "BASS";
+        mid.label = "MID";
+        treble.label = "TREBLE";
+        presence.label = "PRESENCE";
+        outGain.label = "POWER AMP";
 
         addAndMakeVisible(brightButton);
         brightButton.setButtonText("BRIGHT");
@@ -81,6 +88,8 @@ struct AmpComponent : Component
 
         g.setColour(ch_ ? Colour(GREEN) : Colours::wheat);
         g.drawRoundedRectangle(bounds.toFloat(), 10.f, 5.f);
+
+        mode.setColour(ComboBox::ColourIds::textColourId, ch_ ? Colours::white : Colours::black);
     }
 
     void resized() override
@@ -94,23 +103,25 @@ struct AmpComponent : Component
         for (auto &k : getKnobs())
             k->setBounds(controls.removeFromLeft(chunk).reduced(chunk * 0.1f));
 
+        auto offset = getHeight() * 0.1f;
+
         mode.setSize(jmax(100.f, w * 0.15f), jmax(35.f, h * 0.3f));
-        mode.setCentrePosition(b.getCentreX(), b.getCentreY());
+        mode.setCentrePosition(b.getCentreX(), b.getCentreY() + offset);
 
         auto rightThird = b.removeFromRight(w / 3);
-        brightButton.setSize(jmax(75.f, w * 0.1f), jmax(35.f, h * 0.3f));
-        brightButton.setCentrePosition(rightThird.getCentreX(), rightThird.getCentreY());
+        brightButton.setSize(jmax(100.f, w * 0.1f), jmax(35.f, h * 0.3f));
+        brightButton.setCentrePosition(rightThird.getCentreX(), rightThird.getCentreY() + offset);
 
         auto leftThird = b.removeFromLeft(w / 3);
-        channelButton.setSize(jmax(75.f, w * 0.1f), jmax(35.f, h * 0.3f));
-        channelButton.setCentrePosition(leftThird.getCentreX(), rightThird.getCentreY());
+        channelButton.setSize(jmax(100.f, w * 0.1f), jmax(35.f, h * 0.3f));
+        channelButton.setCentrePosition(leftThird.getCentreX(), leftThird.getCentreY() + offset);
     }
 
 private:
     AudioProcessorValueTreeState &apvts;
     CustomLookAndFeel *lnf;
 
-    Slider ts9Gain, inputGain, bass, mid, treble, presence, outGain;
+    AmpKnob ts9Gain, inputGain, bass, mid, treble, presence, outGain;
     std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> ts9Attach, inputGainAttach, bassAttach, midAttach, trebleAttach, presenceAttach, outGainAttach;
 
     ComboBox mode;

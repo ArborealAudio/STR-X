@@ -37,6 +37,11 @@ struct StereoButton : TextButton
     void paint(Graphics &g) override
     {
         auto bounds = getLocalBounds().reduced(5).toFloat();
+        if (isMouseOver())
+        {
+            g.setColour(lnf->buttonBackground.darker(0.6f));
+            g.fillRoundedRectangle(bounds, 3.f);
+        }
         g.setColour(lnf->buttonBackground);
         g.drawRoundedRectangle(bounds, 3.f, 2.f);
 

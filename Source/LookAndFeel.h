@@ -2,6 +2,13 @@
 
 #pragma once
 
+struct AmpKnob : Slider
+{
+    AmpKnob() = default;
+
+    String label = "";
+};
+
 struct CustomLookAndFeel : LookAndFeel_V4,
                            private AudioProcessorValueTreeState::Listener
 {
@@ -26,7 +33,7 @@ struct CustomLookAndFeel : LookAndFeel_V4,
     {
         if (parameterID == "channel")
         {
-            mainColor = newValue ? Colours::black : Colours::grey;
+            mainColor = newValue ? Colours::black : Colour(BLUE_BG).contrasting(0.5f);
             accentColor = newValue ? Colour(GREEN) : Colours::wheat;
             buttonBackground = newValue ? Colour(GRAY) : Colours::wheat;
         }
@@ -35,9 +42,12 @@ struct CustomLookAndFeel : LookAndFeel_V4,
     void drawRotarySlider(Graphics &g, int x, int y, int width, int height, float sliderPos,
                           const float rotaryStartAngle, const float rotaryEndAngle, Slider &slider) override
     {
+        width *= 0.85f;
+        height *= 0.85f;
+
         auto radius = (float)jmin(width / 2, height / 2) - 4.f;
         auto centerX = (float)slider.getLocalBounds().getCentreX();
-        auto centerY = (float)slider.getLocalBounds().getCentreY();
+        auto centerY = (float)slider.getLocalBounds().getCentreY() + (height / 13.33);
         auto rx = centerX - radius;
         auto ry = centerY - radius;
         auto rw = radius * 2.f;
@@ -45,7 +55,7 @@ struct CustomLookAndFeel : LookAndFeel_V4,
 
         g.setColour(Colours::white);
         g.fillEllipse(rx, ry, rw, rw);
-        g.setColour(Colour(GRAY));
+        g.setColour(slider.isMouseOverOrDragging() ? accentColor : Colour(GRAY));
         g.drawEllipse(rx, ry, rw, rw, 3.f);
 
         Path p;
@@ -57,17 +67,23 @@ struct CustomLookAndFeel : LookAndFeel_V4,
         g.setColour(Colour(GRAY));
         g.fillPath(p);
 
-        if (slider.isMouseOverOrDragging())
+        if (auto *knob = dynamic_cast<AmpKnob*>(&slider))
         {
-            g.setColour(accentColor);
-            g.drawEllipse(rx, ry, rw, rw, 3.0f);
+            String text;
+            if (slider.isMouseOverOrDragging())
+                text = String(slider.getValue(), 0);
+            else
+                text = knob->label;
+            g.setColour(mainColor.contrasting(0.1f));
+            g.fillRoundedRectangle(slider.getLocalBounds().removeFromTop(slider.getHeight() / 6.66).toFloat(), 5.f);
+            g.setColour(mainColor.contrasting());
+            g.setFont(slider.getHeight() * 0.15f);
+            g.drawFittedText(text, slider.getLocalBounds().removeFromTop(slider.getHeight() / 6.66), Justification::centred, 1);
         }
     }
 
     void drawComboBox(Graphics &g, int width, int height, bool isButtonDown, int buttonX, int buttonY, int buttonW, int buttonH, ComboBox &comboBox) override
     {
-        g.setColour(mainColor);
-        g.fillRoundedRectangle(comboBox.getLocalBounds().toFloat(), 5.f);
         g.setColour(accentColor);
         g.drawRoundedRectangle(comboBox.getLocalBounds().toFloat().reduced(3.f), 5.f, 3.f);
     }
@@ -78,17 +94,38 @@ struct CustomLookAndFeel : LookAndFeel_V4,
         label.setJustificationType(Justification::centred);
     }
 
+    void drawPopupMenuBackground(Graphics &g, int width, int height) override
+    {
+        g.fillAll(Colours::darkgrey);
+    }
+
+    void drawPopupMenuItem(Graphics &g, const Rectangle<int> &area, bool isSeparator, bool isActive, bool isHighlighted, bool isTicked, bool hasSubMenu, const String &text, const String &shortcutKeyText, const Drawable *icon, const Colour *textColour)
+    {
+        if (isHighlighted)
+        {
+            g.setColour(Colours::grey);
+            g.fillRoundedRectangle(area.toFloat(), 10.f);
+        }
+
+        if (isTicked)
+        {
+            g.setColour(Colours::white);
+            g.fillEllipse(area.withTrimmedRight(area.getWidth() - area.getHeight()).reduced(area.getHeight() * 0.2f).toFloat());
+        }
+
+        g.setColour(Colours::white);
+        g.drawFittedText(text, area, Justification::centred, 1);
+    }
+
     void drawButtonBackground(Graphics &g, Button &button, const Colour &, bool, bool) override
     {
-        g.setColour(mainColor);
-        g.fillRoundedRectangle(button.getLocalBounds().reduced(5).toFloat(), 3.f);
         auto buttonArea = button.getLocalBounds().reduced(5).toFloat();
         g.setColour(buttonBackground);
         g.drawRoundedRectangle(buttonArea, 3.f, 2.f);
 
         if (button.isMouseOver())
         {
-            g.setColour(Colour(GRAY));
+            g.setColour(accentColor.darker(0.6f));
             g.fillRoundedRectangle(buttonArea, 3.f);
         }
 
