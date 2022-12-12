@@ -12,7 +12,7 @@ Pre-built binaries can be downloaded from the Releases page
 
 Building from source requires CMake (post v1.2)
 
-```
+```bash
 git clone https://github.com/ArborealAudio/STR-X
 cd STR-X/modules
 git submodule update --init --recursive # just to make sure you get 'em all
