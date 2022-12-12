@@ -28,7 +28,7 @@ STR-X.vst3/dll (also sorted under company name "Strix Audio")
 
 STR-X_v1.1.vst3/dll
 
-With the plugin showing up in your DAW as STR-X or STR-X(v1.1). From now on, the plugin will only be named STR-X, and it will overwrite itself with each new update. But from v1.1 to v1.2, it should actually not overwrite. You can manually add STR-X v1.2 to any old projects that use v1.1
+With the plugin showing up in your DAW as STR-X or STR-X(v1.1). From now on, the plugin will only be named STR-X, and it will overwrite itself with each new update. But from v1.1 to v1.2, it won't actually  overwrite. You can manually add STR-X v1.2 to any old projects that use v1.1.
 
 #### Linux
 
@@ -36,13 +36,9 @@ Just run the install script and you'll be good to go! The script allows you to p
 
 ### The Controls
 
-#### X
+#### Hi Gain
 
-X is a one-knob distortion pedal, based roughly around the type of midrange focusing you get from a Tube Screamer. No, that doesn't mean we modeled a Tube Screamer. We meant what we said earlier (and not just for legal reasons).
-
-#### Gain
-
-This acts as the input preamp gain for the amp head. This is where the filter crossover happens, and controls a great deal of how the tone is colored. Both the low and high frequency bands go through the preamp stage independently, resulting in interesting distortion shapes and colors, depending on the mode selected, which brings us to
+This will toggle between the Low- and High-gain channels. Low-gain is new to v1.2, and features a new saturation algorithm. Better for punchier, more intelligible tones, it gives your guitar a bit more breathing room, but it also digs in early--still not suitable for clean tones!
 
 #### Mode
 
@@ -54,6 +50,14 @@ This three-way menu selects the crossover point used in the preamp section.
 
 Finally, ***Open*** separates all of the low-end from the mids and highs for a tight and bright tone, perfect for fast palm-muted playing or any situation where the low-end of the other two modes might be excessive.
 
+#### X
+
+X is a one-knob distortion pedal, based roughly around the type of midrange focusing you get from a Tube Screamer. No, that doesn't mean we modeled a Tube Screamer. We meant what we said earlier (and not just for legal reasons).
+
+#### Gain
+
+This acts as the input preamp gain for the amp head. This is where the filter crossover happens, and controls a great deal of how the tone is colored. Both the low and high frequency bands go through the preamp stage independently, resulting in interesting distortion shapes and colors, depending on the mode selected, which brings us to
+
 #### Tone Controls
 
 Pretty much what you'd expect! If you've used a guitar amp, and EQ, or anything pertaining to sound equalization before, you know what this section does.
@@ -64,7 +68,9 @@ Essentially, the legacy tone controls offer less range, and the ranges aren't sy
 
 #### Power Amp
 
-Previously named "Master" until it was brought to my attention that such a name implies a fully linear--i.e. non-distorting--volume control, this knob functions like the power amp on a guitar amp head, which can be highly nonlinear and distorting in character. You should treat this like another distortion knob, but one that generates the type of harmonics you'd expect from Class-B, power amp tubes in a guitar amp (no, we did not model pentodes for this plugin). *Don't* treat this like a clean output gain. For that you'd want:
+Previously named "Master" until it was brought to my attention that such a name implies a fully linear--i.e. non-distorting--volume control, this knob functions like the power amp on a guitar amp head, which can be highly nonlinear and distorting in character.
+
+You should treat this like another distortion knob, but one that generates the type of harmonics you'd expect from Class-B power amp tubes in a guitar amp (no, we did not model pentodes for this plugin). *Don't* treat this like a clean output gain. For that you'd want:
 
 #### Output Volume
 
