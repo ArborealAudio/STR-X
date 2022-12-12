@@ -9,20 +9,23 @@ STR-X is a guitar amp designed from the ground-up to be a fully digital guitar a
 The result was *indeed* a very unique-sounding guitar amp. Clearly geared toward hi-gain tones, users seemed to find it worked best for a sludgy, doom metal tone, or for very thick hard rock guitars. Nonetheless, it can be surprisingly versatile with some massaging. But don't expect "vintage tube warmth" or "British bite" or whatever. It's not your grandpa's guitar amp.
 
 ### Installation
+
 #### MacOS
+
 If you're on a Mac, simply run the .pkg file you downloaded and follow the instructions. You can customize which versions of the plugin you need to install.
 
-The binary name of the plugin has been changed (dropping the needless v1.1 tag), so it will likely show up as a different plugin than the older version. Feel free to use both alongside each other, or replace the older one with the newer one. This latest version is backwards-compatible, so no need to worry about projects getting messed up by replacing.
-
 #### Windows
+
 Windows users...I'm sorry.
 
 I was brand new to making software when I first made the STR-X. As a result, the naming and organization of each plugin version has been a mess. The nomenclature up to this point has been as follows:
 
 ##### v1.0:
+
 STR-X.vst3/dll (also sorted under company name "Strix Audio")
 
 ##### v1.1:
+
 STR-X_v1.1.vst3/dll
 
 With the plugin showing up in your DAW as STR-X or STR-X(v1.1). From now on, the plugin will only be named STR-X, and it will overwrite itself with each new update. But from v1.1 to v1.2, it should actually not overwrite. You can manually add STR-X v1.2 to any old projects that use v1.1
@@ -83,7 +86,7 @@ Additionally, this works well in conjunction with HQ, since the filters are line
 
 ### CHANGES
 
-v1.2
+#### v1.2
 
 //==================
 
@@ -95,7 +98,7 @@ v1.2
 - GUI refactor and new theme for Low-Gain mode
 - General optimization and code cleanup
 
-v1.1
+#### v1.1
 
 //==================
 
