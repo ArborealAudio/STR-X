@@ -15,6 +15,8 @@ STRXAudioProcessorEditor::STRXAudioProcessorEditor (STRXAudioProcessor& p)
 {
     tooltipWindow.setMillisecondsBeforeTipAppears(1000);
 
+    logo = Drawable::createFromImageData(BinaryData::logo_svg, BinaryData::logo_svgSize);
+
     channel = p.apvts.getRawParameterValue("channel");
     p.apvts.addParameterListener("channel", this);
 
@@ -76,6 +78,9 @@ STRXAudioProcessorEditor::~STRXAudioProcessorEditor()
 void STRXAudioProcessorEditor::paint (Graphics& g)
 {
     g.fillAll(*channel ? Colours::black : Colours::grey);
+    float padding = getWidth() * 0.02f;
+    Rectangle<float> logoBounds(padding, padding, getWidth() * 0.075f, getWidth() * 0.075f);
+    logo->drawWithin(g, logoBounds, RectanglePlacement::centred, 1.f);
 }
 
 void STRXAudioProcessorEditor::resized()

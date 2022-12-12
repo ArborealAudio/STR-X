@@ -26,7 +26,7 @@ struct Background : Component
         // strix->draw(g, 1.f);
         strix->drawWithin(g, getLocalBounds().toFloat(), RectanglePlacement::xLeft, 1.f);
 
-        g.setColour(*channel ? Colour(GREEN) : Colours::wheat);
+        g.setColour(*channel ? Colour(GREEN) : Colour(LIGHT_ACCENT));
         g.drawRoundedRectangle(textbounds, 10.f, 3.f);
     }
 

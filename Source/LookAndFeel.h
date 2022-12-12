@@ -12,16 +12,16 @@ struct AmpKnob : Slider
 struct CustomLookAndFeel : LookAndFeel_V4,
                            private AudioProcessorValueTreeState::Listener
 {
-    Colour mainColor, accentColor, buttonBackground;
+    Colour mainColor, accentColor, buttonOutline;
 
     CustomLookAndFeel(AudioProcessorValueTreeState &v) : apvts(v)
     {
         apvts.addParameterListener("channel", this);
         getDefaultLookAndFeel().setDefaultSansSerifTypeface(getCustomFont());
         int channel = *apvts.getRawParameterValue("channel");
-        mainColor = channel ? Colours::black : Colours::grey;
-        accentColor = channel ? Colour(GREEN) : Colours::wheat;
-        buttonBackground = channel ? Colour(GRAY) : Colours::wheat;
+        mainColor = channel ? Colours::black : Colour(BLUE_BG);
+        accentColor = channel ? Colour(GREEN) : Colour(LIGHT_ACCENT);
+        buttonOutline = channel ? Colour(GRAY) : Colour(LIGHT_ACCENT);
     }
 
     ~CustomLookAndFeel()
@@ -33,9 +33,9 @@ struct CustomLookAndFeel : LookAndFeel_V4,
     {
         if (parameterID == "channel")
         {
-            mainColor = newValue ? Colours::black : Colour(BLUE_BG).contrasting(0.5f);
-            accentColor = newValue ? Colour(GREEN) : Colours::wheat;
-            buttonBackground = newValue ? Colour(GRAY) : Colours::wheat;
+            mainColor = newValue ? Colours::black : Colour(BLUE_BG);
+            accentColor = newValue ? Colour(GREEN) : Colour(LIGHT_ACCENT);
+            buttonOutline = newValue ? Colour(GRAY) : Colour(LIGHT_ACCENT);
         }
     }
 
@@ -120,7 +120,7 @@ struct CustomLookAndFeel : LookAndFeel_V4,
     void drawButtonBackground(Graphics &g, Button &button, const Colour &, bool, bool) override
     {
         auto buttonArea = button.getLocalBounds().reduced(5).toFloat();
-        g.setColour(buttonBackground);
+        g.setColour(buttonOutline);
         g.drawRoundedRectangle(buttonArea, 3.f, 2.f);
 
         if (button.isMouseOver())
@@ -150,7 +150,7 @@ struct CustomLookAndFeel : LookAndFeel_V4,
 
         g.setFont(jmin(button.getHeight() * 0.3f, (float)textWidth));
 
-        g.setColour(buttonBackground.contrasting());
+        g.setColour(mainColor.contrasting());
         g.drawFittedText(button.getButtonText(), button.getLocalBounds(), Justification::centred, 2);
     }
 private:

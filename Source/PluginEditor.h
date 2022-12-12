@@ -12,9 +12,9 @@
 #include "PluginProcessor.h"
 
 #define GREEN 0xff4e6f4e
-#define GRAY 0xff374037
-#define BLUE_BG 0xff5c7eb5
-#define LIGHT_GREEN 0xff448771
+#define GRAY 0xff373c40
+#define BLUE_BG 0xff3b537a
+#define LIGHT_ACCENT 0xffdedece
 
 static Typeface::Ptr getCustomFont()
 {
@@ -39,10 +39,10 @@ struct StereoButton : TextButton
         auto bounds = getLocalBounds().reduced(5).toFloat();
         if (isMouseOver())
         {
-            g.setColour(lnf->buttonBackground.darker(0.6f));
+            g.setColour(lnf->buttonOutline.darker(0.6f));
             g.fillRoundedRectangle(bounds, 3.f);
         }
-        g.setColour(lnf->buttonBackground);
+        g.setColour(lnf->buttonOutline);
         g.drawRoundedRectangle(bounds, 3.f, 2.f);
 
         auto ellipseWidth = jmin(bounds.getHeight() * 0.75f, bounds.getWidth() * 0.75f);
@@ -78,7 +78,7 @@ public:
     {
         if (parameterID == "channel")
         {
-            outVol.setColour(outVol.trackColourId, newValue ? Colour(GREEN) : Colours::wheat);
+            outVol.setColour(outVol.trackColourId, newValue ? Colour(GREEN) : Colour(LIGHT_ACCENT));
             repaint();
         }
     }
@@ -103,6 +103,8 @@ private:
     AmpComponent amp;
 
     TooltipWindow tooltipWindow;
+
+    std::unique_ptr<Drawable> logo;
 
     STRXAudioProcessor &audioProcessor;
 

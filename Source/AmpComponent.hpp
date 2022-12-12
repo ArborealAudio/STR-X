@@ -73,7 +73,7 @@ struct AmpComponent : Component
         g.setColour(ch_ ? Colours::black : Colour(BLUE_BG));
         g.fillRoundedRectangle(bounds.toFloat(), 10.f);
 
-        g.setColour(ch_ ? Colours::whitesmoke : Colours::wheat);
+        g.setColour(ch_ ? Colours::whitesmoke : Colour(LIGHT_ACCENT));
 
         Path ltr;
         ltr.startNewSubPath(bounds.getX() + 8, bounds.getY() + 5);
@@ -86,10 +86,10 @@ struct AmpComponent : Component
         g.strokePath(ltr, PathStrokeType(4.f, PathStrokeType::JointStyle::curved, PathStrokeType::EndCapStyle::rounded));
         g.strokePath(rtl, PathStrokeType(4.f, PathStrokeType::JointStyle::curved, PathStrokeType::EndCapStyle::rounded));
 
-        g.setColour(ch_ ? Colour(GREEN) : Colours::wheat);
+        g.setColour(ch_ ? Colour(GREEN) : Colour(LIGHT_ACCENT));
         g.drawRoundedRectangle(bounds.toFloat(), 10.f, 5.f);
 
-        mode.setColour(ComboBox::ColourIds::textColourId, ch_ ? Colours::white : Colours::black);
+        mode.setColour(ComboBox::ColourIds::textColourId, Colours::white);
     }
 
     void resized() override
