@@ -15,6 +15,6 @@ Building from source requires CMake (post v1.2)
 ```
 git clone https://github.com/ArborealAudio/STR-X
 cd STR-X
-cmake -Bbuild
+cmake -Bbuild -DPRODUCTION_BUILD=true
 cmake --build build --config Release --target <TARGET>
 ```
