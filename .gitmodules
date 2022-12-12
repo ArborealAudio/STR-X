@@ -7,6 +7,3 @@
 [submodule "modules/Arbor_modules"]
 	path = modules/Arbor_modules
 	url = https://github.com/ArborealAudio/Arbor_modules
-[submodule "scripts"]
-	path = scripts
-	url = https://github.com/ArborealAudio/scripts
