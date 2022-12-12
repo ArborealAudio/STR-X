@@ -26,7 +26,8 @@ static float cookParams(float valueToCook, float minValue, float maxValue)
 /**
 */
 class STRXAudioProcessor  : public AudioProcessor,
-                            public AudioProcessorValueTreeState::Listener
+                            public AudioProcessorValueTreeState::Listener,
+                            public clap_juce_extensions::clap_properties
 {
 public:
     //==============================================================================
@@ -73,6 +74,14 @@ public:
     void parameterChanged(const String& parameterID, float newValue) override;
     
     void updateOversample();
+
+    String getWrapperTypeString()
+    {
+        if (wrapperType == wrapperType_Undefined && is_clap)
+            return "CLAP";
+
+        return juce::AudioProcessor::getWrapperTypeDescription(wrapperType);
+    }
     
     AudioProcessorValueTreeState apvts;
 
@@ -96,6 +105,7 @@ private:
     strix::BoolParameter *hq, *renderHQ;
     strix::ChoiceParameter *stereo;
     strix::FloatParameter *outVol_dB;
+    float lastOutGain = 0.f;
 
     AudioBuffer<double> doubleBuffer;
 
