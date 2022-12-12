@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(STR-X VERSION 1.2)
 
-add_subdirectory(modules/JUCE)
+add_subdirectory(modules/juce)
 
 add_subdirectory(modules/clap-juce-extensions EXCLUDE_FROM_ALL)
 juce_set_vst2_sdk_path("$ENV{HOME}/vst2_sdk")
