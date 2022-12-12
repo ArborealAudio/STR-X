@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.15)
 
+set(CMAKE_OSX_DEPLOYMENT_TARGET 10.9)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED)
+
 project(STR-X VERSION 1.2)
 
 add_subdirectory(modules/JUCE)
@@ -56,7 +60,8 @@ target_compile_definitions(STR-X
 
 juce_add_binary_data(BinaryData SOURCES
     "Resources/str-x.svg"
-    "Resources/Menlo-Regular.ttf")
+    "Resources/Menlo-Regular.ttf"
+    "Resources/logo.svg")
 
 set_target_properties(BinaryData PROPERTIES
     POSITION_INDEPENDENT_CODE TRUE)
