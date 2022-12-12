@@ -1,0 +1,9 @@
+[submodule "modules/clap-juce-extensions"]
+	path = modules/clap-juce-extensions
+	url = https://github.com/free-audio/clap-juce-extensions
+[submodule "modules/juce"]
+	path = modules/juce
+	url = https://github.com/juce-framework/juce
+[submodule "modules/Arbor_modules"]
+	path = modules/Arbor_modules
+	url = https://github.com/ArborealAudio/Arbor_modules

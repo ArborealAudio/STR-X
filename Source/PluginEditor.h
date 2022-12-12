@@ -10,142 +10,103 @@
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
-#include "Background.h"
+
+#define GREEN 0xff4e6f4e
+#define GRAY 0xff373c40
+#define BLUE_BG 0xff3b537a
+#define LIGHT_ACCENT 0xffdedece
+
+static Typeface::Ptr getCustomFont()
+{
+    return Typeface::createSystemTypefaceFor(BinaryData::MenloRegular_ttf, BinaryData::MenloRegular_ttfSize);
+}
+
+#include "Background.hpp"
+#include "LookAndFeel.h"
+#include "AmpComponent.hpp"
+
+struct StereoButton : TextButton
+{
+    StereoButton()
+    {
+        setClickingTogglesState(true);
+    }
+
+    CustomLookAndFeel *lnf;
+
+    void paint(Graphics &g) override
+    {
+        auto bounds = getLocalBounds().reduced(5).toFloat();
+        if (isMouseOver())
+        {
+            g.setColour(lnf->buttonOutline.darker(0.6f));
+            g.fillRoundedRectangle(bounds, 3.f);
+        }
+        g.setColour(lnf->buttonOutline);
+        g.drawRoundedRectangle(bounds, 3.f, 2.f);
+
+        auto ellipseWidth = jmin(bounds.getHeight() * 0.75f, bounds.getWidth() * 0.75f);
+        g.setColour(lnf->accentColor);
+        if (getToggleState())
+        {
+            g.drawEllipse(bounds.getCentreX() * 0.8f - (ellipseWidth / 2), bounds.getCentreY() - (ellipseWidth / 2), ellipseWidth, ellipseWidth, 3.f);
+            g.drawEllipse(bounds.getCentreX() * 1.2f - (ellipseWidth / 2), bounds.getCentreY() - (ellipseWidth / 2), ellipseWidth, ellipseWidth, 3.f);
+        }
+        else
+        {
+            g.drawEllipse(bounds.getCentreX() - (ellipseWidth / 2), bounds.getCentreY() - (ellipseWidth / 2), ellipseWidth, ellipseWidth, 3.f);
+        }
+    }
+};
 
 //==============================================================================
 /**
-*/
-class CustomLookAndFeel : public LookAndFeel_V4
+ */
+
+class STRXAudioProcessorEditor : public AudioProcessorEditor,
+                                 private AudioProcessorValueTreeState::Listener
 {
 public:
-    CustomLookAndFeel()
-    {
-        setColour(Slider::thumbColourId, Colours::white);
-    }
-
-    void drawRotarySlider(Graphics& g, int x, int y, int width, int height, float sliderPos,
-        const float rotaryStartAngle, const float rotaryEndAngle, Slider& slider) override
-    {
-        auto radius = (float)jmin(width / 2, height / 2) - 4.0f;
-        auto centerX = (float)x + (float)width * 0.5f;
-        auto centerY = (float)y + (float)height * 0.5f;
-        auto rx = centerX - radius;
-        auto ry = centerY - radius;
-        auto rw = radius * 2.f;
-        auto angle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
-
-        g.setColour(Colours::white);
-        g.fillEllipse(rx, ry, rw, rw);
-        g.setColour(Colour (0xff374037));
-        g.drawEllipse(rx, ry, rw, rw, 3.0f);
-
-        Path p;
-        auto pointerLength = radius * 0.5f;
-        auto pointerThickness = 2.0f;
-        p.addRectangle(-pointerThickness * 0.5f, -radius, pointerThickness, pointerLength);
-        p.applyTransform(AffineTransform::rotation(angle).translated(centerX, centerY));
-
-        g.setColour(Colour (0xff374037));
-        g.fillPath(p);
-
-        if (slider.isMouseOverOrDragging())
-        {
-            g.setColour(Colour(0xff4e6f4e));
-            g.drawEllipse(rx, ry, rw, rw, 3.0f);
-        }
-       
-    }
-
-    void drawComboBox(Graphics& g, int width, int height, bool isButtonDown, int buttonX, int buttonY,
-        int buttonW, int buttonH, ComboBox& comboBox) override
-    {
-        Rectangle<float> box;
-        box.setSize(width, height);
-        g.setColour(Colours::transparentBlack);
-        g.drawRoundedRectangle(box, 10.f, 3.f);
-    }
-
-    void drawButtonBackground(Graphics& g, Button& button, const Colour& backgroundColor,
-        bool isMouseOverButton, bool isButtonDown) override
-    {
-        auto buttonArea = button.getLocalBounds().toFloat();
-        g.setColour(Colours::transparentBlack);
-        g.fillRoundedRectangle(buttonArea, 3.f);
-
-        if (button.isMouseOver()) {
-            g.setColour(Colour(0xff374037));
-            g.fillRoundedRectangle(buttonArea, 3.f);
-        }
-
-        if (button.getToggleState()) {
-            g.setColour(Colour(0xff4e6f4e));
-            g.fillRoundedRectangle(buttonArea, 3.f);
-        }
-    }
-
-};
-
-//=================================================================================
-
-class STRXAudioProcessorEditor  : public AudioProcessorEditor
-{
-public:
-    STRXAudioProcessorEditor (STRXAudioProcessor&);
+    STRXAudioProcessorEditor(STRXAudioProcessor &);
     ~STRXAudioProcessorEditor() override;
 
-    
-
     //==============================================================================
-    void paint (Graphics&) override;
+    void paint(Graphics &) override;
     void resized() override;
 
+    void parameterChanged(const String &parameterID, float newValue) override
+    {
+        if (parameterID == "channel")
+        {
+            outVol.setColour(outVol.trackColourId, newValue ? Colour(GREEN) : Colour(LIGHT_ACCENT));
+            repaint();
+        }
+    }
+
 private:
+    std::atomic<float> *channel;
+
     CustomLookAndFeel customLookAndFeel;
-
-    Slider ts9Gain;
-    std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> ts9Attachment;
-    
-    Slider inputGain;
-    std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> inputGainAttachment;
-
-    ComboBox mode;
-    std::unique_ptr<AudioProcessorValueTreeState::ComboBoxAttachment> modeAttachment;
-
-    Slider bassParam;
-    std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> bassParamAttachment;
-
-    Slider midParam;
-    std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> midParamAttachment;
-
-    Slider trebleParam;
-    std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> trebleParamAttachment;
-
-    Slider presenceParam;
-    std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> presenceAttachment;
-
-    TextButton brightButton;
-    std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> brightAttachment;
-
-    Slider outGain;
-    std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> outGainAttachment;
 
     Slider outVol;
     std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> outVolAttachment;
-    
-    TextButton hqButton;   
-    std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> hqButtonAttach;
-    
-    TextButton renderHQ;
-    std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> renderButtonAttach;
+
+    TextButton hqButton, renderHQ;
+    StereoButton stereo;
+    std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> hqButtonAttach, renderButtonAttach, stereoAttach;
 
     ToggleButton legacyTone;
     std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> legacyToneAttach;
-    
+
     Background background;
+
+    AmpComponent amp;
 
     TooltipWindow tooltipWindow;
 
-    STRXAudioProcessor& audioProcessor;
+    std::unique_ptr<Drawable> logo;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (STRXAudioProcessorEditor)
+    STRXAudioProcessor &audioProcessor;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(STRXAudioProcessorEditor)
 };

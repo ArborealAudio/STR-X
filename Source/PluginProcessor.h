@@ -9,13 +9,25 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "STR-X.h"
+
+/*input * (max-min) + min*/
+static float cookParams(float valueToCook, float minValue, float maxValue) 
+{
+    return valueToCook * (maxValue - minValue) + minValue;
+}
+
+#include "STR-X.hpp"
+
+// #if NDEBUG
+#define USE_SIMD 1
+// #endif
 
 //==============================================================================
 /**
 */
 class STRXAudioProcessor  : public AudioProcessor,
-                            public AudioProcessorValueTreeState::Listener
+                            public AudioProcessorValueTreeState::Listener,
+                            public clap_juce_extensions::clap_properties
 {
 public:
     //==============================================================================
@@ -31,6 +43,10 @@ public:
    #endif
 
     void processBlock (AudioBuffer<float>&, MidiBuffer&) override;
+    void processBlock (AudioBuffer<double>&, MidiBuffer&) override;
+    void processDoubleBuffer(AudioBuffer<double> &);
+
+    bool supportsDoublePrecisionProcessing() const override { return true; }
 
     //==============================================================================
     AudioProcessorEditor* createEditor() override;
@@ -58,18 +74,19 @@ public:
     void parameterChanged(const String& parameterID, float newValue) override;
     
     void updateOversample();
-    
-    void updateFilters();
 
+    String getWrapperTypeString()
+    {
+        if (wrapperType == wrapperType_Undefined && is_clap)
+            return "CLAP";
+
+        return juce::AudioProcessor::getWrapperTypeDescription(wrapperType);
+    }
+    
     AudioProcessorValueTreeState apvts;
 
-    std::array<dsp::Oversampling<float>, 3> oversample
-    { {
-        {dsp::Oversampling<float>(2)},
-        {dsp::Oversampling<float>(2)},
-        {dsp::Oversampling<float>(2)},
-    } };
-    
+    std::vector<std::unique_ptr<dsp::Oversampling<double>>> oversample;
+
     int lastUIWidth, lastUIHeight;
 
 private:
@@ -77,7 +94,7 @@ private:
     int osIndex = 0;
     double lastSampleRate = 0.0;
     double lastDownSampleRate = 0.0;
-    int numSamples = 0.0;
+    int numSamples = 0;
 
     bool isOversampled = false;
 
@@ -85,14 +102,57 @@ private:
 
     NormalisableRange<float> nRange, outVolRange;
 
-    std::atomic<float>* hq = nullptr, *renderHQ = nullptr, *outVol_dB = nullptr, *legacyTone = nullptr;
+    strix::BoolParameter *hq, *renderHQ;
+    strix::ChoiceParameter *stereo;
+    strix::FloatParameter *outVol_dB;
+    float lastOutGain = 0.f;
 
-    AmpProcessor amp;
+    AudioBuffer<double> doubleBuffer;
 
-    /*input * (max-min)+min*/
-    float cookParams(float valueToCook, float minValue, float maxValue) 
+    AmpProcessor<vec> stereoAmp;
+    AmpProcessor<double> monoAmp;
+
+    strix::SIMD<double, dsp::AudioBlock<double>, strix::AudioBlock<vec>> simd;
+
+    std::queue<String> msgs;
+    std::mutex mutex;
+    std::atomic<bool> newMessages = false;
+
+    void handleMessage()
     {
-        return valueToCook * (maxValue - minValue) + minValue;
+        int num = msgs.size();
+        for (size_t i = 0; i < num; ++i)
+        {
+            auto &msg = msgs.front();
+            if (msg == "renderHQ" || msg == "hq")
+            {
+                updateOversample();
+
+                dsp::ProcessSpec newSpec;
+                newSpec.sampleRate = lastSampleRate;
+                newSpec.maximumBlockSize = numSamples * oversample[osIndex]->getOversamplingFactor();
+                newSpec.numChannels = getTotalNumInputChannels();
+
+                stereoAmp.prepare(newSpec);
+                monoAmp.prepare(newSpec);
+
+                simd.setInterleavedBlockSize(newSpec.numChannels, newSpec.maximumBlockSize);
+            }
+            else if (msg == "legacyTone")
+            {
+                stereoAmp.eq.updateAllFilters();
+                monoAmp.eq.updateAllFilters();
+            }
+            else if (msg == "mode")
+            {
+                stereoAmp.preAmp.needCrossoverUpdate = true;
+                monoAmp.preAmp.needCrossoverUpdate = true;
+            }
+
+            msgs.pop();
+        }
+
+        newMessages = false;
     }
 
     //==============================================================================
