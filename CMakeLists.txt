@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.15)
 
-set(CMAKE_OSX_DEPLOYMENT_TARGET 10.9)
+set(CMAKE_OSX_DEPLOYMENT_TARGET 10.9 CACHE INTERNAL "")
+if (PRODUCTION_BUILD)
+    set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE INTERNAL "")
+endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -35,6 +38,7 @@ juce_add_plugin(STR-X
 
 clap_juce_extensions_plugin(TARGET STR-X
     CLAP_ID "com.ArborealAudio.STR-X.clap"
+    CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES 64
     CLAP_FEATURES audio-effect distortion)
 
 juce_generate_juce_header(STR-X)
