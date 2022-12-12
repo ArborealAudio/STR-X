@@ -243,7 +243,7 @@ void STRXAudioProcessor::processDoubleBuffer(AudioBuffer<double> &buffer)
     }
 
     oversample[osIndex]->processSamplesDown(block);
-    block *= out_raw;
+    strix::SmoothGain<double>::applySmoothGain(block, out_raw, lastOutGain);
 
     setLatencySamples(oversample[osIndex]->getLatencyInSamples());
 }
