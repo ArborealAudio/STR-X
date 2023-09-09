@@ -2,7 +2,7 @@
 
 set -e
 
-plugin=OmniAmp
+plugin=STR-X
 
 # Install pluginval
 # NOTE: We only validate VST3 because AU seems to not work on CI. Keeping plugin_path
