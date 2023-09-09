@@ -7,7 +7,7 @@ if (PRODUCTION_BUILD)
         set(CMAKE_SYSTEM_VERSION 7 CACHE INTERNAL "")
     endif()
     set(CMAKE_BUILD_TYPE Release CACHE INTERNAL "")
-else
+else()
 	set(PRODUCTION_BUILD OFF)
 endif()
 
@@ -23,7 +23,7 @@ add_subdirectory(modules/clap-juce-extensions EXCLUDE_FROM_ALL)
 if (BUILD_VST2)
 	juce_set_vst2_sdk_path("$ENV{HOME}/vst2_sdk")
 	list(APPEND JUCE_FORMATS LV2)
-else
+else()
 	set(BUILD_VST2 OFF)
 endif()
 
