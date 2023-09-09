@@ -78,8 +78,9 @@ public:
     {
         if (parameterID == "channel")
         {
-            outVol.setColour(outVol.trackColourId, newValue ? Colour(GREEN) : Colour(LIGHT_ACCENT));
-            repaint();
+            outVol.setColour(outVol.trackColourId, (bool)newValue ? Colour(GREEN) : Colour(LIGHT_ACCENT));
+            backgroundColor = (bool)newValue ? Colours::black : Colours::grey;
+			repaint();
         }
     }
 
@@ -99,6 +100,7 @@ private:
     std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> legacyToneAttach;
 
     Background background;
+	Colour backgroundColor;
 
     AmpComponent amp;
 

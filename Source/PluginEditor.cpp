@@ -24,14 +24,18 @@ STRXAudioProcessorEditor::STRXAudioProcessorEditor (STRXAudioProcessor& p)
 
     addAndMakeVisible(amp);
 
+	bool chan = (bool)*channel;
+
     addAndMakeVisible(outVol);
     outVol.setSliderStyle(Slider::LinearVertical);
     outVol.setTextBoxStyle(Slider::TextBoxAbove, false, 80, 20);
     outVol.setColour(Slider::backgroundColourId, Colour(GRAY));
     outVol.setColour(Slider::thumbColourId, Colours::white);
-    outVol.setColour(Slider::trackColourId, Colour(GREEN));
+    outVol.setColour(Slider::trackColourId, chan ? Colour(GREEN) : Colour(LIGHT_ACCENT));
     outVol.setColour(Slider::textBoxOutlineColourId, Colours::transparentBlack);
     outVol.setSliderSnapsToMousePosition(false);
+
+	backgroundColor = chan ? Colours::black : Colours::grey;
 
     hqButton.setButtonText("HQ");
     hqButton.setClickingTogglesState(true);
@@ -77,7 +81,7 @@ STRXAudioProcessorEditor::~STRXAudioProcessorEditor()
 //==============================================================================
 void STRXAudioProcessorEditor::paint (Graphics& g)
 {
-    g.fillAll(*channel ? Colours::black : Colours::grey);
+	g.fillAll(backgroundColor);
     float padding = getWidth() * 0.02f;
     Rectangle<float> logoBounds(padding, padding, getWidth() * 0.075f, getWidth() * 0.075f);
     logo->drawWithin(g, logoBounds, RectanglePlacement::centred, 1.f);
