@@ -13,9 +13,9 @@ Pre-built binaries can be downloaded from the Releases page
 Building from source requires CMake (post v1.2)
 
 ```bash
-git clone https://github.com/ArborealAudio/STR-X
+git clone --recurse-submodules https://github.com/ArborealAudio/STR-X
 cd STR-X
 git submodule update --init --recursive # just to make sure you get 'em all
-cmake -Bbuild -DPRODUCTION_BUILD=true
+cmake -Bbuild -DPRODUCTION_BUILD=1
 cmake --build build --config Release --target <TARGET>
 ```
