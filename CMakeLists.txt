@@ -29,11 +29,6 @@ endif()
 
 set(JUCE_FORMATS AU VST3)
 
-
-if (TARGET juce_vst2_sdk)
-    list(APPEND JUCE_FORMATS VST)
-endif()
-
 juce_add_plugin(STR-X
     COMPANY_NAME "Arboreal Audio"
     COPY_PLUGIN_AFTER_BUILD TRUE
@@ -89,4 +84,4 @@ target_link_libraries(STR-X
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
-        juce::juce_recommended_warning_flags)
+)
