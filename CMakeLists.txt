@@ -16,16 +16,16 @@ project(STR-X VERSION 1.2)
 add_subdirectory(modules/juce)
 
 add_subdirectory(modules/clap-juce-extensions EXCLUDE_FROM_ALL)
-juce_set_vst2_sdk_path("$ENV{HOME}/vst2_sdk")
+
+if (BUILD_VST2)
+   juce_set_vst2_sdk_path("$ENV{HOME}/vst2_sdk")
+   list(APPEND JUCE_FORMATS VST)
+endif()
 
 set(JUCE_FORMATS AU VST3)
 
 if (UNIX AND NOT APPLE)
     list(APPEND JUCE_FORMATS LV2)
-endif()
-
-if (TARGET juce_vst2_sdk)
-    list(APPEND JUCE_FORMATS VST)
 endif()
 
 juce_add_plugin(STR-X
@@ -82,5 +82,4 @@ target_link_libraries(STR-X
         Arbor_modules
     PUBLIC
         juce::juce_recommended_config_flags
-        juce::juce_recommended_lto_flags
-        juce::juce_recommended_warning_flags)
+        juce::juce_recommended_lto_flags)
