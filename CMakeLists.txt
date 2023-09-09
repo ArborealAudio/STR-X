@@ -7,22 +7,28 @@ if (PRODUCTION_BUILD)
         set(CMAKE_SYSTEM_VERSION 7 CACHE INTERNAL "")
     endif()
     set(CMAKE_BUILD_TYPE Release CACHE INTERNAL "")
+else
+	set(PRODUCTION_BUILD OFF)
 endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-project(STR-X VERSION 1.2)
+project(STR-X VERSION 1.2.1)
 
 add_subdirectory(modules/juce)
 
 add_subdirectory(modules/clap-juce-extensions EXCLUDE_FROM_ALL)
-juce_set_vst2_sdk_path("$ENV{HOME}/vst2_sdk")
+
+if (BUILD_VST2)
+	juce_set_vst2_sdk_path("$ENV{HOME}/vst2_sdk")
+	list(APPEND JUCE_FORMATS LV2)
+else
+	set(BUILD_VST2 OFF)
+endif()
 
 set(JUCE_FORMATS AU VST3)
 
-if (UNIX AND NOT APPLE)
-    list(APPEND JUCE_FORMATS LV2)
-endif()
 
 if (TARGET juce_vst2_sdk)
     list(APPEND JUCE_FORMATS VST)
