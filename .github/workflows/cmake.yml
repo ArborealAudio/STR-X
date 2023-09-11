@@ -3,10 +3,19 @@
 name: CMake
 
 on:
+  workflow_dispatch:
   push:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
+
+# When pushing new commits, cancel any running builds on that branch
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DISPLAY: :0
 
 jobs:
   build:
@@ -16,12 +25,8 @@ jobs:
       # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
       fail-fast: false
 
-      # Set up a matrix to run the following 3 configurations:
-      # 1. <Windows, Release, latest MSVC compiler toolchain on the default runner image, default generator>
-      # 2. <Linux, Release, latest GCC compiler toolchain on the default runner image, default generator>
-      # 3. <Linux, Release, latest Clang compiler toolchain on the default runner image, default generator>
       matrix:
-        os: [ubuntu-22.04, windows-2019, macos-12]
+        os: [ubuntu-20.04, windows-2019, macos-12]
 
     steps:
     - name: Install Linux Deps
@@ -34,7 +39,8 @@ jobs:
           libfreetype6-dev \
           libx11-dev libxcomposite-dev libxcursor-dev libxcursor-dev libxext-dev libxinerama-dev libxrandr-dev libxrender-dev \
           libwebkit2gtk-4.0-dev \
-          libglu1-mesa-dev mesa-common-dev
+          libglu1-mesa-dev mesa-common-dev xvfb
+        sudo /usr/bin/Xvfb $DISPLAY &
           
     - uses: actions/checkout@v3
       with:
