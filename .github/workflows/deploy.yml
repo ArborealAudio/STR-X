@@ -1,7 +1,9 @@
 name: Deploy
 
 on:
-	workflow_dispatch: # just enabling this for now
+	workflow_dispatch:
+ 	push:
+  		branches: [ "master" ]
 
 concurrency:
 	group: ${{ github.ref }}
