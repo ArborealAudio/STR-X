@@ -8,56 +8,19 @@ on:
 	# cancel-in-progress: true
 
 jobs:
-	build_and_deploy:
- 		name: ${{ matrix.os }}
-		runs-on: ${{ matrix.os }}
-		strategy:
-			fail-fast: false
-			matrix:
-				include:
-		 			- os: ubuntu-20.04
-			 			cc: clang-12
-						c++: clang++-12
+  build_and_deploy:
+ 	name: ${{ matrix.os }}
+	runs-on: ${{ matrix.os }}
+	strategy:
+	  fail-fast: false
+	  matrix:
+		include:
+		  - os: ubuntu-20.04
+		  cc: clang-12
+		  c++: clang++-12
 
-		steps:
-		- name: Install Linux Deps
-			if: runner.os == 'Linux'
-			run: |
-				sudo apt update
-				sudo apt install libasound2-dev libx11-dev \
-					libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev \
-					libxrandr-dev libxrender-dev libfreetype6-dev libglu1-mesa-dev \
-					libjack-jackd2-dev
-		 
-		- name: Checkout code
-			uses: actions/checkout@v3
-			with:
-				submodules: recursive
- 
-		- name: Configure
-			uses: seanmiddleditch/gha-setup-ninja@master
-	 		env:
-				CMAKE_C_COMPILER=${{ matrix.cc }}
-				CMAKE_CXX_COMPILER=${{ matrix.c++ }}
-			run: |
-				cmake -Bbuild -GNinja -DCMAKE_C_COMPILER=${{ matrix.cc }} -DCMAKE_CXX_COMPILER=${{ matrix.c++ }}
-	
-		- name: Build
-			run: |
-				cmake --build build --config Release --parallel 4
-	
-		- name: Get artifacts
-			run: |
-				echo >> "ARTIFACTS_PATH=build/${{ env.PRODUCT_NAME }}_artefacts/Release/" >> $GITHUB_ENV
-	
-		- name: Compress
-			working-directory: ${{ env.ARTIFACTS_PATH }}
-			run: |
-				tar cfJ "${{ env.PRODUCT_NAME }}-linux.xz" ${{ env.ARTIFACTS_PATH }}/${{ env.FORMATS }}
-	
-		- name: Upload Linux
-			if: runner.os == 'Linux'
-			uses: actions/upload-artifact@v3
-			with:
-				name: ${{ env.PRODUCT_NAME }}-linux.xz
-				path: "${{ env.ARTIFACTS_PATH }}/${{ env.PRODUCT_NAME }}-linux.xz
+	steps:
+
+    - name: Test
+      run: |
+        echo "I am running"
