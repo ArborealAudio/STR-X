@@ -25,7 +25,9 @@ jobs:
         sudo apt install libasound2-dev libx11-dev \
           libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev \
           libxrandr-dev libxrender-dev libfreetype6-dev libglu1-mesa-dev \
-          libjack-jackd2-dev
+          libjack-jackd2-dev ninja-build
+
+    # TODO: Install Ninja on MacOS/Windows
 
     - name: Checkout code
       uses: actions/checkout@v3
@@ -33,7 +35,6 @@ jobs:
         submodules: recursive
 
     - name: Configure
-      uses: seanmiddleditch/gha-setup-ninja@master
       env:
         CMAKE_C_COMPILER=${{ matrix.cc }}
         CMAKE_CXX_COMPILER=${{ matrix.c++ }}
