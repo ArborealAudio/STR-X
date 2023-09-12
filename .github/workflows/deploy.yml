@@ -2,7 +2,6 @@ name: Deploy
 
 on:
   workflow_dispatch:
-    branches: [ "master" ]
 
 # concurrency:
 	# group: ${{ github.ref }}
@@ -13,48 +12,55 @@ env:
 
 jobs:
 	build:
-		runs-on: $${ matrix.os }}
+ 		name: ${{ matrix.os }}
+		runs-on: ${{ matrix.os }}
 		strategy:
 			fail-fast: false
-		matrix:
-			-os: ubuntu-20.04
-			cmake_args: ("-DPRODUCTION_BUILD=1", "-DCMAKE_C_COMPILER=clang-12", "-DCMAKE_CXX_COMPILER=clang++-12")
-			formats: ("VST3", "CLAP", "LV2")
+			matrix:
+				include:
+		 			- os: ubuntu-20.04
+			 			cc: clang-12
+						c++: clang++-12
 
 		steps:
-  
-		-name: Checkout code
-		uses: actions/checkout@v3
-		with:
-   			submodules: recursive
-
-		-name: Install Linux Deps
-		if: runner.os == 'Linux'
-		run: |
-			 sudo apt update
-			 sudo apt install sudo apt install libasound2-dev libx11-dev \
-			 libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev \
-			 libxrandr-dev libxrender-dev libfreetype6-dev libglu1-mesa-dev \
-			 libjack-jackd2-dev
-
-		-name: Configure
-		uses: seanmiddleditch/gha-setup-ninja@master
-		run: cmake -B ${{ env.BUILD_DIR }} -GNinja ${{ env.CMAKE_ARGS }}
-
-		-name: Build
-		run: cmake --build ${{ env.BUILD_DIR }} --config Release --parallel 4
-
-		-name: Get artifacts
-		run: |
-			 echo >> "ARTIFACTS_PATH=${{ env.BUILD_DIR}}/${{ env.PRODUCT_NAME }}_artefacts/Release/" >> $GITHUB_ENV
-
-		-name: Compress
-		working-directory: ${{ env.ARTIFACTS_PATH }}
-		run: tar cfJ "${{ env.PRODUCT_NAME }}-linux.xz" ${{ env.ARTIFACTS_PATH }}/${{ env.FORMATS }}
-
-		-name: Upload Linux
-		if: runner.os == 'Linux'
-		uses: actions/upload-artifact@v3
-		with:
-			name: ${{ env.PRODUCT_NAME }}-linux.xz
-			path: "${{ env.ARTIFACTS_PATH }}/${{ env.PRODUCT_NAME }}-linux.xz
+		- name: Install Linux Deps
+			if: runner.os == 'Linux'
+			run: |
+				sudo apt update
+				sudo apt install libasound2-dev libx11-dev \
+					libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev \
+					libxrandr-dev libxrender-dev libfreetype6-dev libglu1-mesa-dev \
+					libjack-jackd2-dev
+		 
+		- name: Checkout code
+			uses: actions/checkout@v3
+			with:
+				submodules: recursive
+ 
+		- name: Configure
+			uses: seanmiddleditch/gha-setup-ninja@master
+	 		env:
+				CMAKE_C_COMPILER=${{ matrix.cc }}
+				CMAKE_CXX_COMPILER=${{ matrix.c++ }}
+			run: |
+				cmake -B ${{ env.BUILD_DIR }} -GNinja -DCMAKE_C_COMPILER=${{ matrix.cc }} -DCMAKE_CXX_COMPILER=${{ matrix.c++ }}
+	
+		- name: Build
+			run: |
+				cmake --build ${{ env.BUILD_DIR }} --config Release --parallel 4
+	
+		- name: Get artifacts
+			run: |
+				echo >> "ARTIFACTS_PATH=${{ env.BUILD_DIR}}/${{ env.PRODUCT_NAME }}_artefacts/Release/" >> $GITHUB_ENV
+	
+		- name: Compress
+			working-directory: ${{ env.ARTIFACTS_PATH }}
+			run: |
+				tar cfJ "${{ env.PRODUCT_NAME }}-linux.xz" ${{ env.ARTIFACTS_PATH }}/${{ env.FORMATS }}
+	
+		- name: Upload Linux
+			if: runner.os == 'Linux'
+			uses: actions/upload-artifact@v3
+			with:
+				name: ${{ env.PRODUCT_NAME }}-linux.xz
+				path: "${{ env.ARTIFACTS_PATH }}/${{ env.PRODUCT_NAME }}-linux.xz
