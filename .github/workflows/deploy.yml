@@ -3,6 +3,9 @@ name: Deploy
 on:
   workflow_dispatch:
 
+env:
+  PROJECT: STR-X
+
 jobs:
   build_and_deploy:
     name: ${{ matrix.os }}
@@ -14,7 +17,6 @@ jobs:
             - os: ubuntu-20.04
               cc: clang-12
               cpp: clang++-12
-              formats: [VST3, CLAP, LV2]
 
     steps:
 
@@ -35,11 +37,9 @@ jobs:
         submodules: recursive
 
     - name: Configure
-      env:
-        CMAKE_C_COMPILER: ${{ matrix.cc }}
-        CMAKE_CXX_COMPILER: ${{ matrix.cpp }}
       run: |
         cmake -Bbuild -GNinja -DPRODUCTION_BUILD=1
+        -DCMAKE_C_COMPILER=${{ matrix.cc }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp }}
 
     - name: Build
       run: |
@@ -47,16 +47,16 @@ jobs:
 
     - name: Get artifacts
       run: |
-        echo >> "ARTIFACTS_PATH=build/${{ env.PRODUCT_NAME }}_artefacts/Release/" >> $GITHUB_ENV
+        echo >> "ARTIFACTS_PATH=build/${{ env.PROJECT }}_artefacts/Release/" >> $GITHUB_ENV
 
-    - name: Compress
+    - name: Compress Linux
       working-directory: ${{ env.ARTIFACTS_PATH }}
       run: |
-        tar cfJ "${{ env.PRODUCT_NAME }}-linux.tar.xz ${{ env.ARTIFACTS_PATH }}/${{ matrix.formats }}
+        tar cfJ "${{ env.PROJECT }}-linux.tar.xz ./VST3/${{ env.PROJECT}}.vst3 ./LV2/${{ env.PROJECT}}.lv2 ./CLAP/${{ env.PROJECT }}.clap
 
     - name: Upload Linux
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       with:
-        name: ${{ env.PRODUCT_NAME }}-linux.tar.xz
-        path: ${{ env.ARTIFACTS_PATH }}/${{ env.PRODUCT_NAME}}-linux.tar.xz
+        name: ${{ env.PROJECT }}-linux.tar.xz
+        path: ${{ env.ARTIFACTS_PATH }}/${{ env.PROJECT}}-linux.tar.xz
