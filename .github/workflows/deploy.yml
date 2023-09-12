@@ -38,8 +38,7 @@ jobs:
 
     - name: Configure
       run: |
-        cmake -Bbuild -GNinja -DPRODUCTION_BUILD=1
-        -DCMAKE_C_COMPILER=${{ matrix.cc }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp }}
+        cmake -Bbuild -GNinja -DPRODUCTION_BUILD=1 -DCMAKE_C_COMPILER=${{ matrix.cc }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp }}
 
     - name: Build
       run: |
