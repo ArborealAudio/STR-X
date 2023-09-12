@@ -36,8 +36,8 @@ jobs:
 
     - name: Configure
       env:
-        CMAKE_C_COMPILER=${{ matrix.cc }}
-        CMAKE_CXX_COMPILER=${{ matrix.cpp }}
+        CMAKE_C_COMPILER: ${{ matrix.cc }}
+        CMAKE_CXX_COMPILER: ${{ matrix.cpp }}
       run: |
         cmake -Bbuild -GNinja -DPRODUCTION_BUILD=1
 
