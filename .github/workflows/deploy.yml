@@ -7,9 +7,6 @@ on:
 	# group: ${{ github.ref }}
 	# cancel-in-progress: true
 
-env:
-	BUILD_DIR: build
-
 jobs:
 	build:
  		name: ${{ matrix.os }}
@@ -43,15 +40,15 @@ jobs:
 				CMAKE_C_COMPILER=${{ matrix.cc }}
 				CMAKE_CXX_COMPILER=${{ matrix.c++ }}
 			run: |
-				cmake -B ${{ env.BUILD_DIR }} -GNinja -DCMAKE_C_COMPILER=${{ matrix.cc }} -DCMAKE_CXX_COMPILER=${{ matrix.c++ }}
+				cmake -Bbuild -GNinja -DCMAKE_C_COMPILER=${{ matrix.cc }} -DCMAKE_CXX_COMPILER=${{ matrix.c++ }}
 	
 		- name: Build
 			run: |
-				cmake --build ${{ env.BUILD_DIR }} --config Release --parallel 4
+				cmake --build build --config Release --parallel 4
 	
 		- name: Get artifacts
 			run: |
-				echo >> "ARTIFACTS_PATH=${{ env.BUILD_DIR}}/${{ env.PRODUCT_NAME }}_artefacts/Release/" >> $GITHUB_ENV
+				echo >> "ARTIFACTS_PATH=build/${{ env.PRODUCT_NAME }}_artefacts/Release/" >> $GITHUB_ENV
 	
 		- name: Compress
 			working-directory: ${{ env.ARTIFACTS_PATH }}
