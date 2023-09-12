@@ -61,6 +61,7 @@ jobs:
         repository: ArborealAudio/scripts
         ref: deploy
         path: scripts
+        token: ${{ secrets.WORKFLOW_PAT }}
 
   # PROBLEM: Need the .pkgproj somewhere in order to build installer
 
