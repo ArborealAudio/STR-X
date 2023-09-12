@@ -2,7 +2,7 @@ name: Deploy
 
 on:
   push:
-    branch: ["master", "develop"]
+    branches: ["master"]
   workflow_dispatch:
   release:
 
@@ -76,7 +76,7 @@ jobs:
       env:
         APP_CERT: ${{ secret.DEVELOPER_ID_APPLICATION }}
         INSTALL_CERT: ${{ secret.DEVELOPER_ID_INSTALLER }}
-        APPLE_USER: "alexbriccio@gmail.com"
+        APPLE_USER: ${{ secret.NOTARY_USER }}
         NOTARY_PW: ${{ secret.NOTARY_PASSWORD }}
         TEAM_ID: ${{ secret.TEAM_ID }}
         VERSION: "${{ env.GITHUB_SHA:0:5 }}" #hope this works
