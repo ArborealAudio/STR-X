@@ -5,6 +5,7 @@ on:
 
 env:
   PROJECT: STR-X
+  ARTIFACTS_PATH: build/${{ env.PROJECT }}_artefacts/Release/
 
 jobs:
   build_and_deploy:
@@ -43,10 +44,6 @@ jobs:
     - name: Build
       run: |
         cmake --build build --config Release --parallel 4
-
-    - name: Get artifacts
-      run: |
-        echo >> "ARTIFACTS_PATH=build/${{ env.PROJECT }}_artefacts/Release/" >> $GITHUB_ENV
 
     - name: Compress Linux
       working-directory: ${{ env.ARTIFACTS_PATH }}
