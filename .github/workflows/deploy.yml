@@ -48,7 +48,7 @@ jobs:
     - name: Compress Linux
       working-directory: ${{ env.ARTIFACTS_PATH }}
       run: |
-        tar cfJ "${{ env.PROJECT }}-linux.tar.xz ./VST3/${{ env.PROJECT}}.vst3 ./LV2/${{ env.PROJECT}}.lv2 ./CLAP/${{ env.PROJECT }}.clap
+        tar cfJ "${{ env.PROJECT }}-linux.tar.xz" ./VST3/${{ env.PROJECT}}.vst3 ./LV2/${{ env.PROJECT}}.lv2 ./CLAP/${{ env.PROJECT }}.clap
 
     - name: Upload Linux
       if: runner.os == 'Linux'
