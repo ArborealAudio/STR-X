@@ -8,13 +8,12 @@ on:
 	# cancel-in-progress: true
 
 jobs:
-  build_and_deploy:
-	runs-on: ubuntu-20.04
-	strategy:
-	  fail-fast: false
-
-	steps:
-
-    - name: Test
-      run: |
-        echo "I am running"
+	build_and_test:
+ 		name: TEsting
+		runs-on: ubuntu-latest
+		strategy:
+			fail-fast: false
+	
+		steps:
+		- name: Test
+			run: echo "I am running"
