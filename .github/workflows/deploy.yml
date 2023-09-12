@@ -1,7 +1,13 @@
 name: Deploy
 
 on:
+  push:
+    branch: ["master", "develop"]
   workflow_dispatch:
+  release:
+
+  # TODO: Set version based on SHA if non-release-triggered workflow
+  # Get the SHA version like: VERSION=${GITHUB_SHA:0:5}
 
 env:
   PROJECT: STR-X
@@ -9,16 +15,18 @@ env:
 
 jobs:
   build_and_deploy:
-    name: ${{ matrix.os }}
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
         fail-fast: false
         matrix:
           include:
-            - os: ubuntu-20.04
-              cmake_args: "-DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++"
-            - os: macos-12
-            - os: windows-2019
+            - name: Linux
+              os: ubuntu-20.04
+            - name: macOS
+              os: macos-12
+            - name: Windows
+              os: windows-2019
               cmake_args: "-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
 
     steps:
@@ -47,49 +55,55 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Configure
-      run: |
-        cmake -Bbuild -GNinja -DPRODUCTION_BUILD=1 ${{ matrix.cmake_args }}
+    - name: Checkout build scripts
+      uses: actions/checkout@v3
+      with:
+        repository: ArborealAudio/scripts
+        ref: deploy
+        path: scripts
+
+  # PROBLEM: Need the .pkgproj somewhere in order to build installer
+
+    - name: Import Certs (MacOS)
+      uses: apple-actions/import-codesign-certs@v2
+      if: runner.os == 'macOS'
+      with:
+        p12-file-base64: ${{ secrets.DEV_ID_APP_CERT }}
+        p12-password: ${{ secrets.DEV_ID_APP_PASSWORD }}
 
     - name: Build
+      if: runner.os == 'macOS' # just do Mac for now to test codesigning
+      env:
+        APP_CERT: ${{ secret.DEVELOPER_ID_APPLICATION }}
+        INSTALL_CERT: ${{ secret.DEVELOPER_ID_INSTALLER }}
+        APPLE_USER: "alexbriccio@gmail.com"
+        NOTARY_PW: ${{ secret.NOTARY_PASSWORD }}
+        TEAM_ID: ${{ secret.TEAM_ID }}
+        VERSION: "${{ env.GITHUB_SHA:0:5 }}" #hope this works
       run: |
-        cmake --build build --config Release --parallel 4
+        ./scripts/mac-build.sh -n STR-X -v $VERSION --clap
+        echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+        echo "INSTALLER_PATH=installer/build/${{ env.PROJECT }}-mac.dmg" >> "$GITHUB_ENV"
+      
+    # TODO: Get installer for Windows, tarball for Linux
 
-    - name: Compress Linux
-      if: runner.os == 'Linux'
-      working-directory: ${{ env.ARTIFACTS_PATH }}
-      run: |
-        tar cfJ "${{ env.PROJECT }}-linux.tar.xz" ./VST3/${{ env.PROJECT}}.vst3 ./LV2/${{ env.PROJECT}}.lv2 ./CLAP/${{ env.PROJECT }}.clap
-
-    - name: Compress MacOS
-      if: runner.os == 'macOS'
-      working-directory: ${{ env.ARTIFACTS_PATH }}
-      run: |
-        tar cfJ "${{ env.PROJECT }}-macos.tar.xz" ./VST3/${{ env.PROJECT}}.vst3 ./AU/${{ env.PROJECT}}.component ./CLAP/${{ env.PROJECT }}.clap
-
-    - name: Compress Windows
-      if: runner.os == 'Windows'
-      working-directory: ${{ env.ARTIFACTS_PATH }}
-      run: |
-        7z a -tzip "${{ env.PROJECT }}-windows.zip" ./VST3/${{ env.PROJECT}}.vst3 ./CLAP/${{ env.PROJECT }}.clap
-
-    - name: Upload Linux
-      if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v3
-      with:
-        name: ${{ env.PROJECT }}-linux.tar.xz
-        path: ${{ env.ARTIFACTS_PATH }}/${{ env.PROJECT}}-linux.tar.xz
+    # - name: Upload Linux
+    #   if: runner.os == 'Linux'
+    #   uses: actions/upload-artifact@v3
+    #   with:
+    #     name: ${{ env.PROJECT }}-linux-${{ env.VERSION }}.tar.xz
+    #     path: ${{ env.ARTIFACTS_PATH }}/${{ env.PROJECT}}-linux-${{ env.VERSION }}.tar.xz
 
     - name: Upload MacOS
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v3
       with:
-        name: ${{ env.PROJECT }}-macos.tar.xz
-        path: ${{ env.ARTIFACTS_PATH }}/${{ env.PROJECT}}-macos.tar.xz
+        name: ${{ env.PROJECT }}-mac.dmg
+        path: ${{ env.INSTALLER_PATH }}
 
-    - name: Upload Windows
-      if: runner.os == 'Windows'
-      uses: actions/upload-artifact@v3
-      with:
-        name: ${{ env.PROJECT }}-windows.zip
-        path: ${{ env.ARTIFACTS_PATH }}/${{ env.PROJECT}}-windows.zip
+    # - name: Upload Windows
+    #   if: runner.os == 'Windows'
+    #   uses: actions/upload-artifact@v3
+    #   with:
+    #     name: ${{ env.PROJECT }}-windows-${{ env.VERSION }}.zip
+    #     path: ${{ env.ARTIFACTS_PATH }}/${{ env.PROJECT}}-windows-${{ env.VERSION }}.zip
