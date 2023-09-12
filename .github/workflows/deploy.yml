@@ -1,8 +1,11 @@
 name: Deploy
 
 on:
- 	push:
-  	branches: [ "master" ]
+  workflow_dispatch:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
 
 concurrency:
 	group: ${{ github.ref }}
@@ -29,7 +32,7 @@ jobs:
    			submodules: recursive
 
 		-name: Install Linux Deps
-		# if: runner.os == 'Linux'
+		if: runner.os == 'Linux'
 		run: |
 			 sudo apt update
 			 sudo apt install sudo apt install libasound2-dev libx11-dev \
