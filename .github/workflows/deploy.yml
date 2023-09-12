@@ -74,11 +74,11 @@ jobs:
     - name: Build
       if: runner.os == 'macOS' # just do Mac for now to test codesigning
       env:
-        APP_CERT: ${{ secret.DEVELOPER_ID_APPLICATION }}
-        INSTALL_CERT: ${{ secret.DEVELOPER_ID_INSTALLER }}
-        APPLE_USER: ${{ secret.NOTARY_USER }}
-        NOTARY_PW: ${{ secret.NOTARY_PASSWORD }}
-        TEAM_ID: ${{ secret.TEAM_ID }}
+        APP_CERT: ${{ secrets.DEVELOPER_ID_APPLICATION }}
+        INSTALL_CERT: ${{ secrets.DEVELOPER_ID_INSTALLER }}
+        APPLE_USER: ${{ secrets.NOTARY_USER }}
+        NOTARY_PW: ${{ secrets.NOTARY_PASSWORD }}
+        TEAM_ID: ${{ secrets.TEAM_ID }}
         VERSION: "${{ env.GITHUB_SHA:0:5 }}" #hope this works
       run: |
         ./scripts/mac-build.sh -n STR-X -v $VERSION --clap
