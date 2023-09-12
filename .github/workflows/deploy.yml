@@ -8,8 +8,7 @@ on:
 	# cancel-in-progress: true
 
 jobs:
-	build_and_test:
- 		name: TEsting
+	test:
 		runs-on: ubuntu-latest
 		strategy:
 			fail-fast: false
