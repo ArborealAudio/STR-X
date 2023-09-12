@@ -13,7 +13,7 @@ jobs:
           include:
             - os: ubuntu-20.04
               cc: clang-12
-              c++: clang++-12
+              cpp: clang++-12
               formats: [VST3, CLAP, LV2]
 
     steps:
@@ -37,7 +37,7 @@ jobs:
     - name: Configure
       env:
         CMAKE_C_COMPILER=${{ matrix.cc }}
-        CMAKE_CXX_COMPILER=${{ matrix.c++ }}
+        CMAKE_CXX_COMPILER=${{ matrix.cpp }}
       run: |
         cmake -Bbuild -GNinja -DPRODUCTION_BUILD=1
 
