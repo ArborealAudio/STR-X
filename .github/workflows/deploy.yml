@@ -89,7 +89,7 @@ jobs:
       run: |
         ./scripts/mac-build.sh -n STR-X -v $VERSION --clap
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-        echo "INSTALLER_PATH=installer/build/${{ env.PROJECT }}-mac-${{ env.VERSION }}.dmg" >> "$GITHUB_ENV"
+        echo "INSTALLER_PATH=installer/build/${{ env.PROJECT }}-mac-v${{ env.VERSION }}.dmg" >> "$GITHUB_ENV"
 
     - name: Build (Linux)
       if: runner.os == 'Linux'
@@ -100,7 +100,7 @@ jobs:
         cmake --build build --config Release
         ./scripts/linux-installer.sh -n STR-X -v $VERSION --clap
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-        echo "INSTALLER_PATH=./${{ env.PROJECT }}-linux-${{ env.VERSION }}.tar.xz" >> "$GITHUB_ENV"
+        echo "INSTALLER_PATH=${{ env.PROJECT }}-linux-v${{ env.VERSION }}.tar.xz" >> "$GITHUB_ENV"
       
     # TODO: Get installer for Windows, tarball for Linux
 
@@ -108,14 +108,14 @@ jobs:
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       with:
-        name: ${{ env.PROJECT }}-linux-${{ env.VERSION }}.tar.xz
+        name: ${{ env.PROJECT }}-linux-v${{ env.VERSION }}.tar.xz
         path: ${{ env.INSTALLER_PATH }}
 
     - name: Upload (MacOS)
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v3
       with:
-        name: ${{ env.PROJECT }}-mac-${{ env.VERSION}}.dmg
+        name: ${{ env.PROJECT }}-mac-v${{ env.VERSION}}.dmg
         path: ${{ env.INSTALLER_PATH }}
 
     # - name: Upload Windows
