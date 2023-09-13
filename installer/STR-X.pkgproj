@@ -79,7 +79,7 @@
 															<key>GID</key>
 															<integer>0</integer>
 															<key>PATH</key>
-															<string>VST3/STR-X.vst3</string>
+															<string>STR-X.vst3</string>
 															<key>PATH_TYPE</key>
 															<integer>1</integer>
 															<key>PERMISSIONS</key>
@@ -632,7 +632,7 @@
 															<key>GID</key>
 															<integer>0</integer>
 															<key>PATH</key>
-															<string>Components/STR-X.component</string>
+															<string>STR-X.component</string>
 															<key>PATH_TYPE</key>
 															<integer>1</integer>
 															<key>PERMISSIONS</key>
@@ -1185,7 +1185,7 @@
 															<key>GID</key>
 															<integer>0</integer>
 															<key>PATH</key>
-															<string>VST/STR-X.vst</string>
+															<string>STR-X.clap</string>
 															<key>PATH_TYPE</key>
 															<integer>1</integer>
 															<key>PERMISSIONS</key>
@@ -1199,7 +1199,7 @@
 													<key>GID</key>
 													<integer>0</integer>
 													<key>PATH</key>
-													<string>VST</string>
+													<string>CLAP</string>
 													<key>PATH_TYPE</key>
 													<integer>2</integer>
 													<key>PERMISSIONS</key>
@@ -1640,11 +1640,11 @@
 				<key>FOLLOW_SYMBOLIC_LINKS</key>
 				<false/>
 				<key>IDENTIFIER</key>
-				<string>com.ArborealAudio.STR-X.VST</string>
+				<string>com.ArborealAudio.STR-X.CLAP</string>
 				<key>LOCATION</key>
 				<integer>0</integer>
 				<key>NAME</key>
-				<string>VST</string>
+				<string>CLAP</string>
 				<key>OVERWRITE_PERMISSIONS</key>
 				<false/>
 				<key>PAYLOAD_SIZE</key>
@@ -1661,7 +1661,7 @@
 			<key>TYPE</key>
 			<integer>0</integer>
 			<key>UUID</key>
-			<string>88C785BD-4BD3-4CDB-B6C5-75A9B6C1CAE0</string>
+			<string>467A25D0-E029-4A01-90C3-170ABA15F2D8</string>
 		</dict>
 	</array>
 	<key>PROJECT</key>
