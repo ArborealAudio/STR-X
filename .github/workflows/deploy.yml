@@ -67,6 +67,7 @@ jobs:
       uses: apple-actions/import-codesign-certs@v2
       if: runner.os == 'macOS'
       with:
+        keychain: 'app'
         p12-file-base64: ${{ secrets.DEV_ID_APP_CERT }}
         p12-password: ${{ secrets.DEV_ID_APP_PASSWORD }}
 
@@ -74,6 +75,7 @@ jobs:
       uses: apple-actions/import-codesign-certs@v2
       if: runner.os == 'macOS'
       with:
+        keychain: 'install'
         p12-file-base64: ${{ secrets.DEV_ID_INSTALLER_CERT }}
         p12-password: ${{ secrets.DEV_ID_INSTALLER_PASSWORD }}
 
