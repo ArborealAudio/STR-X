@@ -113,8 +113,8 @@ jobs:
         INSTALL_CERT_PW: ${{ secrets.WIN_INSTALL_CERT_PW }}
       run: |
         bash ./scripts/win-build.sh -n STR-X -v $VERSION --clap --ninja
-        echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-        echo "INSTALLER_PATH=products/Output/${{ env.PROJECT }}-windows.exe" >> "$GITHUB_ENV"
+        bash echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+        bash echo "INSTALLER_PATH=products/Output/${{ env.PROJECT }}-windows.exe" >> "$GITHUB_ENV"
 
     - name: Upload (Linux)
       if: runner.os == 'Linux'
