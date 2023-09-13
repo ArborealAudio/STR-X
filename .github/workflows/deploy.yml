@@ -81,7 +81,7 @@ jobs:
         create-keychain: 'false'
 
     - name: Build (MacOS)
-      if: runner.os == 'macOS' # just do Mac for now to test codesigning
+      if: runner.os == 'macOS'
       env:
         APP_CERT: ${{ secrets.DEVELOPER_ID_APPLICATION }}
         INSTALL_CERT: ${{ secrets.DEVELOPER_ID_INSTALLER }}
@@ -92,7 +92,7 @@ jobs:
       run: |
         ./scripts/mac-build.sh -n STR-X -v $VERSION --clap
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-        echo "INSTALLER_PATH=installer/build/${{ env.PROJECT }}-mac-v${{ env.VERSION }}.dmg" >> "$GITHUB_ENV"
+        echo "INSTALLER_PATH=installer/build/${{ env.PROJECT }}-mac.dmg" >> "$GITHUB_ENV"
 
     - name: Build (Linux)
       if: runner.os == 'Linux'
@@ -105,7 +105,7 @@ jobs:
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
         echo "INSTALLER_PATH=${{ env.PROJECT }}-linux-v${{ env.VERSION }}.tar.xz" >> "$GITHUB_ENV"
       
-    # TODO: Get installer for Windows, tarball for Linux
+    # TODO: Get installer for Windows
 
     - name: Upload (Linux)
       if: runner.os == 'Linux'
@@ -118,7 +118,7 @@ jobs:
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v3
       with:
-        name: ${{ env.PROJECT }}-mac-v${{ env.VERSION}}.dmg
+        name: ${{ env.PROJECT }}-mac.dmg
         path: ${{ env.INSTALLER_PATH }}
 
     # - name: Upload Windows
