@@ -105,7 +105,16 @@ jobs:
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
         echo "INSTALLER_PATH=${{ env.PROJECT }}-linux-v${{ env.VERSION }}.tar.xz" >> "$GITHUB_ENV"
       
-    # TODO: Get installer for Windows
+    - name: Build (Windows)
+      if: runner.os == 'Windows'
+      env:
+        VERSION: "1.2.1"
+        INSTALL_CERT: ${{ secrets.WIN_INSTALL_CERT }}
+        INSTALL_CERT_PW: ${{ secrets.WIN_INSTALL_CERT_PW }}
+      run: |
+        bash ./scripts/win-build.sh -n STR-X -v $VERSION --clap --ninja
+        echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+        echo "INSTALLER_PATH=products/Output/${{ env.PROJECT }}-windows.exe" >> "$GITHUB_ENV"
 
     - name: Upload (Linux)
       if: runner.os == 'Linux'
@@ -121,9 +130,9 @@ jobs:
         name: ${{ env.PROJECT }}-mac.dmg
         path: ${{ env.INSTALLER_PATH }}
 
-    # - name: Upload Windows
-    #   if: runner.os == 'Windows'
-    #   uses: actions/upload-artifact@v3
-    #   with:
-    #     name: ${{ env.PROJECT }}-windows-${{ env.VERSION }}.zip
-    #     path: ${{ env.ARTIFACTS_PATH }}/${{ env.PROJECT}}-windows-${{ env.VERSION }}.zip
+    - name: Upload (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ env.PROJECT }}-windows.exe
+        path: ${{ env.INSTALLER_PATH }}
