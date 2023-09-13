@@ -27,7 +27,7 @@ jobs:
               os: macos-12
             - name: Windows
               os: windows-2019
-              cmake_args: "-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
+              cmake_args: "-GNinja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
 
     steps:
 
@@ -99,7 +99,7 @@ jobs:
       env:
         VERSION: "1.2.1"
       run: |
-        cmake -Bbuild -GNinja -DPRODUCTION_BUILD=1
+        cmake -Bbuild -GNinja -DPRODUCTION_BUILD=1 # need to forward CMake args
         cmake --build build --config Release
         ./scripts/linux-installer.sh -n STR-X -v $VERSION --clap
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
@@ -111,7 +111,7 @@ jobs:
         VERSION: "1.2.1"
       shell: bash
       run: |
-        scripts/win-build.sh -n STR-X -v $VERSION --clap --ninja
+        scripts/win-build.sh -n STR-X -v $VERSION --clap ${{ matrix.cmake_args }}
 
     - name: Sign Windows Installer
       if: runner.os == 'Windows'
