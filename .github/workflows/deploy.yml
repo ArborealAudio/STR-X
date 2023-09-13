@@ -111,8 +111,6 @@ jobs:
         VERSION: "1.2.1"
       run: |
         bash ./scripts/win-build.sh -n STR-X -v $VERSION --clap --ninja
-        bash echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-        bash echo "INSTALLER_PATH=products/Output/${{ env.PROJECT }}-windows.exe" >> "$GITHUB_ENV"
 
     - name: Sign Windows Installer
       if: runner.os == 'Windows'
