@@ -63,16 +63,21 @@ jobs:
         path: scripts
         token: ${{ secrets.WORKFLOW_PAT }}
 
-  # PROBLEM: Need the .pkgproj somewhere in order to build installer
-
-    - name: Import Certs (MacOS)
+    - name: Import App Certs (MacOS)
       uses: apple-actions/import-codesign-certs@v2
       if: runner.os == 'macOS'
       with:
         p12-file-base64: ${{ secrets.DEV_ID_APP_CERT }}
         p12-password: ${{ secrets.DEV_ID_APP_PASSWORD }}
 
-    - name: Build
+    - name: Import Installer Certs (MacOS)
+      uses: apple-actions/import-codesign-certs@v2
+      if: runner.os == 'macOS'
+      with:
+        p12-file-base64: ${{ secrets.DEV_ID_INSTALLER_CERT }}
+        p12-password: ${{ secrets.DEV_ID_INSTALLER_PASSWORD }}
+
+    - name: Build (MacOS)
       if: runner.os == 'macOS' # just do Mac for now to test codesigning
       env:
         APP_CERT: ${{ secrets.DEVELOPER_ID_APPLICATION }}
@@ -84,22 +89,33 @@ jobs:
       run: |
         ./scripts/mac-build.sh -n STR-X -v $VERSION --clap
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-        echo "INSTALLER_PATH=installer/build/${{ env.PROJECT }}-mac.dmg" >> "$GITHUB_ENV"
+        echo "INSTALLER_PATH=installer/build/${{ env.PROJECT }}-mac-${{ env.VERSION }}.dmg" >> "$GITHUB_ENV"
+
+    - name: Build (Linux)
+      if: runner.os == 'Linux'
+      env:
+        VERSION: "1.2.1"
+      run: |
+        cmake -Bbuild -GNinja -DPRODUCTION_BUILD=1
+        cmake --build build --config Release
+        ./scripts/linux-installer.sh -n STR-X -v $VERSION --clap
+        echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+        echo "INSTALLER_PATH=installer/build/${{ env.PROJECT }}-linux-${{ env.VERSION }}.tar.xz" >> "$GITHUB_ENV"
       
     # TODO: Get installer for Windows, tarball for Linux
 
-    # - name: Upload Linux
-    #   if: runner.os == 'Linux'
-    #   uses: actions/upload-artifact@v3
-    #   with:
-    #     name: ${{ env.PROJECT }}-linux-${{ env.VERSION }}.tar.xz
-    #     path: ${{ env.ARTIFACTS_PATH }}/${{ env.PROJECT}}-linux-${{ env.VERSION }}.tar.xz
+    - name: Upload (Linux)
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ env.PROJECT }}-linux-${{ env.VERSION }}.tar.xz
+        path: ${{ env.INSTALLER_PATH }}
 
-    - name: Upload MacOS
+    - name: Upload (MacOS)
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v3
       with:
-        name: ${{ env.PROJECT }}-mac.dmg
+        name: ${{ env.PROJECT }}-mac-${{ env.VERSION}}.dmg
         path: ${{ env.INSTALLER_PATH }}
 
     # - name: Upload Windows
