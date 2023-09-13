@@ -109,8 +109,9 @@ jobs:
       if: runner.os == 'Windows'
       env:
         VERSION: "1.2.1"
+      shell: bash
       run: |
-        bash ./scripts/win-build.sh -n STR-X -v $VERSION --clap --ninja
+        scripts/win-build.sh -n STR-X -v $VERSION --clap --ninja
 
     - name: Sign Windows Installer
       if: runner.os == 'Windows'
