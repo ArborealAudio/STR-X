@@ -100,7 +100,7 @@ jobs:
         cmake --build build --config Release
         ./scripts/linux-installer.sh -n STR-X -v $VERSION --clap
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-        echo "INSTALLER_PATH=${{ env.PROJECT }}-linux-${{ env.VERSION }}.tar.xz" >> "$GITHUB_ENV"
+        echo "INSTALLER_PATH=./${{ env.PROJECT }}-linux-${{ env.VERSION }}.tar.xz" >> "$GITHUB_ENV"
       
     # TODO: Get installer for Windows, tarball for Linux
 
