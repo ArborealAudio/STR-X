@@ -105,7 +105,7 @@ jobs:
       env:
         VERSION: "1.2.1"
       run: |
-        cmake -Bbuild -GNinja -DPRODUCTION_BUILD=1
+        cmake -Bbuild -GNinja -DPRODUCTION_BUILD=1 -DBUILD_VST2=1
         cmake --build build --config Release
         ./scripts/linux-installer.sh -n STR-X -v $VERSION --clap --vst2
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
