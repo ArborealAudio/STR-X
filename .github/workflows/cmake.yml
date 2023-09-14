@@ -5,9 +5,9 @@ name: CMake
 on:
   workflow_dispatch:
   push:
-    branches: [ "master" ]
+    branches: [ "master", "develop" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "master", "develop" ]
 
 # When pushing new commits, cancel any running builds on that branch
 concurrency:
