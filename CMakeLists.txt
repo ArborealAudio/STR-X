@@ -23,7 +23,7 @@ add_subdirectory(modules/clap-juce-extensions EXCLUDE_FROM_ALL)
 set(JUCE_FORMATS AU VST3)
 
 if (BUILD_VST2)
-	juce_set_vst2_sdk_path("$ENV{HOME}/vst2_sdk")
+	juce_set_vst2_sdk_path(vst2_sdk)
 	list(APPEND JUCE_FORMATS VST)
 else()
 	set(BUILD_VST2 OFF)

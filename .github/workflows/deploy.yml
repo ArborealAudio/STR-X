@@ -62,6 +62,13 @@ jobs:
         path: scripts
         token: ${{ secrets.WORKFLOW_PAT }}
 
+    - name: Get SDKs
+      uses: actions/checkout@v3
+      with:
+        repository: ArborealAudio/vst2_sdk
+        path: vst2_sdk
+        token: ${{ secrets.WORKFLOW_PAT }}
+
     - name: Import App Certs (MacOS)
       uses: apple-actions/import-codesign-certs@v2
       if: runner.os == 'macOS'
@@ -89,7 +96,7 @@ jobs:
         TEAM_ID: ${{ secrets.TEAM_ID }}
         VERSION: "1.2.1"
       run: |
-        ./scripts/mac-build.sh -n STR-X -v $VERSION --clap
+        ./scripts/mac-build.sh -n STR-X -v $VERSION --clap --vst2
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
         echo "INSTALLER_PATH=installer/build/${{ env.PROJECT }}-mac.dmg" >> "$GITHUB_ENV"
 
@@ -98,9 +105,9 @@ jobs:
       env:
         VERSION: "1.2.1"
       run: |
-        cmake -Bbuild -GNinja -DPRODUCTION_BUILD=1 # need to forward CMake args
+        cmake -Bbuild -GNinja -DPRODUCTION_BUILD=1
         cmake --build build --config Release
-        ./scripts/linux-installer.sh -n STR-X -v $VERSION --clap
+        ./scripts/linux-installer.sh -n STR-X -v $VERSION --clap --vst2
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
         echo "INSTALLER_PATH=${{ env.PROJECT }}-linux-v${{ env.VERSION }}.tar.xz" >> "$GITHUB_ENV"
       
@@ -110,7 +117,7 @@ jobs:
         VERSION: "1.2.1"
       shell: bash
       run: |
-        scripts/win-build.sh -n STR-X -v $VERSION --clap --ninja
+        scripts/win-build.sh -n STR-X -v $VERSION --clap --vst2 --ninja
         echo "INSTALLER_PATH=products/Output/${{ env.PROJECT }}-windows.exe" >> "$GITHUB_ENV"
 
     - name: Sign Windows Installer
