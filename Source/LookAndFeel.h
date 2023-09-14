@@ -21,7 +21,7 @@ struct CustomLookAndFeel : LookAndFeel_V4,
         int channel = *apvts.getRawParameterValue("channel");
         mainColor = channel ? Colours::black : Colour(BLUE_BG);
         accentColor = channel ? Colour(GREEN) : Colour(LIGHT_ACCENT);
-        buttonOutline = channel ? Colour(GRAY) : Colour(LIGHT_ACCENT);
+        buttonOutline = channel ? Colour(GREEN) : Colour(LIGHT_ACCENT);
     }
 
     ~CustomLookAndFeel()
@@ -82,7 +82,9 @@ struct CustomLookAndFeel : LookAndFeel_V4,
         }
     }
 
-    void drawComboBox(Graphics &g, int width, int height, bool isButtonDown, int buttonX, int buttonY, int buttonW, int buttonH, ComboBox &comboBox) override
+    void drawComboBox(Graphics &g, int width, int height, bool isButtonDown,
+					  int buttonX, int buttonY, int buttonW, int buttonH,
+					  ComboBox &comboBox) override
     {
         g.setColour(accentColor);
         g.drawRoundedRectangle(comboBox.getLocalBounds().toFloat().reduced(3.f), 5.f, 3.f);
@@ -99,7 +101,11 @@ struct CustomLookAndFeel : LookAndFeel_V4,
         g.fillAll(Colours::darkgrey);
     }
 
-    void drawPopupMenuItem(Graphics &g, const Rectangle<int> &area, bool isSeparator, bool isActive, bool isHighlighted, bool isTicked, bool hasSubMenu, const String &text, const String &shortcutKeyText, const Drawable *icon, const Colour *textColour)
+    void drawPopupMenuItem(Graphics &g, const Rectangle<int> &area, bool isSeparator,
+						   bool isActive, bool isHighlighted, bool isTicked,
+						   bool hasSubMenu, const String &text,
+						   const String &shortcutKeyText, const Drawable *icon,
+						   const Colour *textColour) override
     {
         if (isHighlighted)
         {
@@ -110,7 +116,9 @@ struct CustomLookAndFeel : LookAndFeel_V4,
         if (isTicked)
         {
             g.setColour(Colours::white);
-            g.fillEllipse(area.withTrimmedRight(area.getWidth() - area.getHeight()).reduced(area.getHeight() * 0.2f).toFloat());
+            g.fillEllipse(area.
+						  withTrimmedRight(area.getWidth() - area.getHeight())
+						  .reduced(area.getHeight() * 0.25f).toFloat());
         }
 
         g.setColour(Colours::white);
@@ -150,7 +158,8 @@ struct CustomLookAndFeel : LookAndFeel_V4,
 
         g.setFont(jmin(button.getHeight() * 0.3f, (float)textWidth));
 
-        g.setColour(mainColor.contrasting());
+		auto state = button.getToggleState();
+        g.setColour(state ? accentColor.contrasting() : mainColor.contrasting());
         g.drawFittedText(button.getButtonText(), button.getLocalBounds(), Justification::centred, 2);
     }
 private:
