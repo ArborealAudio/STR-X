@@ -3,11 +3,9 @@ name: Deploy
 on:
   push:
     branches: ["master"]
+  pull_request:
+    branches: ["master"]
   workflow_dispatch:
-  release:
-
-  # TODO: Set version based on SHA if non-release-triggered workflow
-  # Get the SHA version like: VERSION=${GITHUB_SHA:0:5}
 
 env:
   PROJECT: STR-X
