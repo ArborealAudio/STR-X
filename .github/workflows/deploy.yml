@@ -5,6 +5,7 @@ on:
     workflows: ["Cmake"]
     types: [completed]
     branches: ["master"]
+  workflow_dispatch:
 
 env:
   PROJECT: STR-X
