@@ -13,7 +13,7 @@ env:
 
 jobs:
   build_and_deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }} && ${{ 
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
