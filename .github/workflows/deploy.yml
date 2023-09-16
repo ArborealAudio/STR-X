@@ -98,7 +98,8 @@ jobs:
         ./scripts/mac-build.sh -n STR-X -v $VERSION --clap --vst2
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
         echo "ARTIFACT=${{ env.PROJECT }}-mac.dmg" >> "$GITHUB_ENV"
-        echo "INSTALLER_PATH=installer/build" >> "$GITHUB_ENV"
+        mkdir bin
+        cp installer/build/$ARTIFACT bin/
 
     - name: Build (Linux)
       if: runner.os == 'Linux'
@@ -110,7 +111,8 @@ jobs:
         ./scripts/linux-installer.sh -n STR-X -v $VERSION --clap --vst2
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
         echo "ARTIFACT=${{ env.PROJECT }}-linux.tar.xz" >> "$GITHUB_ENV"
-        echo "INSTALLER_PATH=." >> "$GITHUB_ENV"
+        mkdir bin
+        cp $ARTIFACT bin/
       
     - name: Build (Windows)
       if: runner.os == 'Windows'
@@ -120,7 +122,8 @@ jobs:
       run: |
         scripts/win-build.sh -n STR-X -v $VERSION --clap --vst2 --ninja
         echo "ARTIFACT=${{ env.PROJECT }}-windows.exe" >> "$GITHUB_ENV"
-        echo "INSTALLER_PATH=products/Output" >> "$GITHUB_ENV"
+        mkdir bin
+        cp products/Output/$ARTIFACT bin/
 
     - name: Sign Windows Installer
       if: runner.os == 'Windows'
@@ -136,7 +139,7 @@ jobs:
       uses: actions/upload-artifact@v3.1.3
       with:
         name: ${{ env.ARTIFACT }}
-        path: ${{ env.INSTALLER_PATH }}/${{ env.ARTIFACT }}
+        path: bin/${{ env.ARTIFACT }}
 
     - name: Configure S3 Credentials
       uses: aws-actions/configure-aws-credentials@v1
@@ -146,4 +149,4 @@ jobs:
         aws-region: us-east-1
 
     - name: Upload to S3
-      run: aws s3 sync ${{ env.INSTALLER_PATH }}/${{ env.ARTIFACT }} s3://arborealaudioinstallers/str-x/
+      run: aws s3 sync bin/ s3://arborealaudioinstallers/str-x/
