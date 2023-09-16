@@ -128,23 +128,11 @@ jobs:
         folder: products/Output
         timestamp-server: 'http://timestamp.digicert.com'
 
-    - name: Upload (Linux)
-      if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v3
+    - name: Upload to S3
+      uses: shallwefootball/s3-upload-action@master
       with:
-        name: ${{ env.PROJECT }}-linux-v${{ env.VERSION }}.tar.xz
-        path: ${{ env.INSTALLER_PATH }}
-
-    - name: Upload (MacOS)
-      if: runner.os == 'macOS'
-      uses: actions/upload-artifact@v3
-      with:
-        name: ${{ env.PROJECT }}-mac.dmg
-        path: ${{ env.INSTALLER_PATH }}
-
-    - name: Upload (Windows)
-      if: runner.os == 'Windows'
-      uses: actions/upload-artifact@v3
-      with:
-        name: ${{ env.PROJECT }}-windows.exe
-        path: ${{ env.INSTALLER_PATH }}
+        aws_key_id: ${{ secrets.AWS_ACCESS_KEY }}
+        aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws_bucket: arborealaudioinstallers
+        source_dir: ${{ env.INSTALLER_PATH }}
+        destination_dir: str-x
