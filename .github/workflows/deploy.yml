@@ -97,7 +97,7 @@ jobs:
       run: |
         ./scripts/mac-build.sh -n STR-X -v $VERSION --clap --vst2
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-        echo "ARTIFACT=${{ env.PROJECT }}-mac-v${VERSION}.dmg" >> "$GITHUB_ENV"
+        echo "ARTIFACT=${{ env.PROJECT }}-mac.dmg" >> "$GITHUB_ENV"
         echo "INSTALLER_PATH=installer/build" >> "$GITHUB_ENV"
 
     - name: Build (Linux)
@@ -109,7 +109,7 @@ jobs:
         cmake --build build --config Release
         ./scripts/linux-installer.sh -n STR-X -v $VERSION --clap --vst2
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-        echo "ARTIFACT=${{ env.PROJECT }}-linux-v${VERSION}.tar.xz" >> "$GITHUB_ENV"
+        echo "ARTIFACT=${{ env.PROJECT }}-linux.tar.xz" >> "$GITHUB_ENV"
         echo "INSTALLER_PATH=." >> "$GITHUB_ENV"
       
     - name: Build (Windows)
@@ -119,7 +119,7 @@ jobs:
       shell: bash
       run: |
         scripts/win-build.sh -n STR-X -v $VERSION --clap --vst2 --ninja
-        echo "ARTIFACT=${{ env.PROJECT }}-windows-v${VERSION}.exe" >> "$GITHUB_ENV"
+        echo "ARTIFACT=${{ env.PROJECT }}-windows.exe" >> "$GITHUB_ENV"
         echo "INSTALLER_PATH=products/Output" >> "$GITHUB_ENV"
 
     - name: Sign Windows Installer
