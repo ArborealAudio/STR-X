@@ -99,7 +99,7 @@ jobs:
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
         echo "ARTIFACT=${{ env.PROJECT }}-mac.dmg" >> "$GITHUB_ENV"
         mkdir bin
-        cp installer/build/$ARTIFACT bin/
+        cp installer/build/${{ env.PROJECT }}-mac.dmg bin/
 
     - name: Build (Linux)
       if: runner.os == 'Linux'
@@ -112,7 +112,7 @@ jobs:
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
         echo "ARTIFACT=${{ env.PROJECT }}-linux.tar.xz" >> "$GITHUB_ENV"
         mkdir bin
-        cp $ARTIFACT bin/
+        cp ${{ env.PROJECT }}-linux.tar.xz bin/
       
     - name: Build (Windows)
       if: runner.os == 'Windows'
@@ -123,7 +123,7 @@ jobs:
         scripts/win-build.sh -n STR-X -v $VERSION --clap --vst2 --ninja
         echo "ARTIFACT=${{ env.PROJECT }}-windows.exe" >> "$GITHUB_ENV"
         mkdir bin
-        cp products/Output/$ARTIFACT bin/
+        cp products/Output/${{ env.PROJECT }}-windows.exe bin/
 
     - name: Sign Windows Installer
       if: runner.os == 'Windows'
