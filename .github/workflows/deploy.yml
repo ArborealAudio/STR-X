@@ -150,4 +150,4 @@ jobs:
         aws-region: us-east-1
 
     - name: Upload to S3
-      run: aws s3 sync bin/ s3://arborealaudioinstallers/str-x/
+      run: aws s3 sync --acl public-read bin/ s3://arborealaudioinstallers/str-x/
