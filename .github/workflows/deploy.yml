@@ -1,11 +1,10 @@
 name: Deploy
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Cmake"]
+    types: [completed]
     branches: ["master"]
-  pull_request:
-    branches: ["master"]
-  workflow_dispatch:
 
 env:
   PROJECT: STR-X
@@ -13,6 +12,7 @@ env:
 
 jobs:
   build_and_deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }} && ${{ 
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
