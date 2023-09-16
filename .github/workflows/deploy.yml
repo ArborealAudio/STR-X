@@ -95,6 +95,7 @@ jobs:
         TEAM_ID: ${{ secrets.TEAM_ID }}
         VERSION: "1.2.1"
       run: |
+        xcode-select -s /Applications/Xcode_13.4.1.app
         ./scripts/mac-build.sh -n STR-X -v $VERSION --clap --vst2
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
         echo "ARTIFACT=${{ env.PROJECT }}-mac.dmg" >> "$GITHUB_ENV"
