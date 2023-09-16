@@ -129,11 +129,12 @@ jobs:
         folder: products/Output
         timestamp-server: 'http://timestamp.digicert.com'
 
-    - name: Upload to S3
-      uses: shallwefootball/s3-upload-action@master
+    - name: Configure S3 Credentials
+      uses: aws-actions/configure-aws-credentials@v1
       with:
-        aws_key_id: ${{ secrets.AWS_ACCESS_KEY }}
-        aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws_bucket: arborealaudioinstallers
-        source_dir: ${{ env.INSTALLER_PATH }}
-        destination_dir: str-x
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Upload to S3
+      run: aws s3 sync ./${{ env.INSTALLER_PATH }} s3://arborealaudioinstallers/str-x/
