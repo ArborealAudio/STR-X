@@ -10,6 +10,7 @@ on:
 env:
   PROJECT: STR-X
   ARTIFACTS_PATH: build/STR-X_artefacts/Release/
+  VERSION: "1.2.1"
 
 jobs:
   build_and_deploy:
@@ -93,10 +94,9 @@ jobs:
         APPLE_USER: ${{ secrets.NOTARY_USER }}
         NOTARY_PW: ${{ secrets.NOTARY_PASSWORD }}
         TEAM_ID: ${{ secrets.TEAM_ID }}
-        VERSION: "1.2.1"
       run: |
         sudo xcode-select -s /Applications/Xcode_13.4.1.app
-        ./scripts/mac-build.sh -n STR-X -v $VERSION --clap --vst2
+        ./scripts/mac-build.sh -n ${{ env.PROJECT }} -v $VERSION --clap --vst2
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
         echo "ARTIFACT=${{ env.PROJECT }}-mac.dmg" >> "$GITHUB_ENV"
         mkdir bin
@@ -104,12 +104,10 @@ jobs:
 
     - name: Build (Linux)
       if: runner.os == 'Linux'
-      env:
-        VERSION: "1.2.1"
       run: |
         cmake -Bbuild -GNinja -DPRODUCTION_BUILD=1 -DBUILD_VST2=1
         cmake --build build --config Release
-        ./scripts/linux-installer.sh -n STR-X -v $VERSION --clap --vst2
+        ./scripts/linux-installer.sh -n ${{ env.PROJECT }} -v $VERSION --clap --vst2
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
         echo "ARTIFACT=${{ env.PROJECT }}-linux.tar.xz" >> "$GITHUB_ENV"
         mkdir bin
@@ -117,11 +115,9 @@ jobs:
       
     - name: Build (Windows)
       if: runner.os == 'Windows'
-      env:
-        VERSION: "1.2.1"
       shell: bash
       run: |
-        scripts/win-build.sh -n STR-X -v $VERSION --clap --vst2 --ninja
+        scripts/win-build.sh -n ${{ env.PROJECT }} -v $VERSION --clap --vst2 --ninja
         echo "ARTIFACT=${{ env.PROJECT }}-windows.exe" >> "$GITHUB_ENV"
         mkdir bin
         cp products/Output/${{ env.PROJECT }}-windows.exe bin/
