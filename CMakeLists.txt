@@ -23,19 +23,19 @@ add_subdirectory(modules/clap-juce-extensions EXCLUDE_FROM_ALL)
 set(JUCE_FORMATS AU VST3)
 
 if (BUILD_VST2)
-	juce_set_vst2_sdk_path(vst2_sdk)
+	juce_set_vst2_sdk_path(./vst2_sdk)
 	list(APPEND JUCE_FORMATS VST)
 else()
 	set(BUILD_VST2 OFF)
 endif()
 
-if (UNIX AND NOT APPLE)
-	list(APPEND JUCE_FORMATS LV2)
+if (NOT INSTALL)
+	set(INSTALL OFF)
 endif()
 
 juce_add_plugin(STR-X
     COMPANY_NAME "Arboreal Audio"
-    COPY_PLUGIN_AFTER_BUILD TRUE
+    COPY_PLUGIN_AFTER_BUILD ${INSTALL}
     PLUGIN_MANUFACTURER_CODE Arau
     PLUGIN_CODE STRX
     FORMATS ${JUCE_FORMATS}
@@ -70,6 +70,10 @@ target_compile_definitions(STR-X
         JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0
         JUCE_DISPLAY_SPLASH_SCREEN=0)
+
+if (UNIX AND NOT APPLE)
+	target_link_libraries(STR-X PRIVATE "-static-libgcc" "-static-libstdc++")
+endif()
 
 juce_add_binary_data(BinaryData SOURCES
     "Resources/str-x.svg"

@@ -33,6 +33,7 @@ for p in ${plugin_path[@]}; do
 		echo "Pluginval successful"
 	else
 		echo "Pluginval failed"
+		rm -rf pluginval*
 		exit 1
 	fi
 done
