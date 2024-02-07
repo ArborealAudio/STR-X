@@ -14,9 +14,6 @@ concurrency:
   group: ${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  DISPLAY: :0
-
 jobs:
   build:
     if: contains(toJson(github.event.commits), '[ci skip]') == false
@@ -26,22 +23,15 @@ jobs:
       fail-fast: false
 
       matrix:
-        os: [ubuntu-22.04, windows-2019, macos-12]
+        os: [ubuntu-latest, windows-2019, macos-12]
 
     steps:
-    - name: Install Linux Deps
+    - name: Linux Build
       if: runner.os == 'Linux'
       run: |
-        sudo apt update
-        sudo apt install libasound2-dev libjack-jackd2-dev \
-          ladspa-sdk \
-          libcurl4-openssl-dev  \
-          libfreetype6-dev \
-          libx11-dev libxcomposite-dev libxcursor-dev libxcursor-dev libxext-dev libxinerama-dev libxrandr-dev libxrender-dev \
-          libwebkit2gtk-4.0-dev \
-          libglu1-mesa-dev mesa-common-dev xvfb
-        sudo /usr/bin/Xvfb $DISPLAY &
-          
+		 docker build -t STR_X .
+		 docker run -it -v $(pwd):/src STR_X
+
     - uses: actions/checkout@v3
       with:
         submodules: recursive

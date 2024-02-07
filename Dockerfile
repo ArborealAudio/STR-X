@@ -5,7 +5,6 @@ RUN apt update && apt install -y \
   wget \
   gcc \
   g++ \
-  clang \
   ninja-build \
   pkg-config \
   libjack-jackd2-dev \
@@ -30,3 +29,4 @@ RUN mkdir -p ~/bin && \
   tar xf cmake-3.28.1-linux-x86_64.tar.gz && cd cmake-3.28.1-linux-x86_64/bin && \
   ln -s $PWD/cmake ~/bin/cmake && \
   echo PATH=~/bin:$PATH >> ~/.bashrc
+
