@@ -29,6 +29,10 @@ else()
 	set(BUILD_VST2 OFF)
 endif()
 
+if (UNIX AND NOT APPLE)
+	list(APPEND JUCE_FORMATS LV2)
+endif()
+
 if (NOT INSTALL)
 	set(INSTALL OFF)
 endif()
@@ -42,6 +46,9 @@ juce_add_plugin(STR-X
     VST2_CATEGORY kPlugCategEffect
     VST3_CATEGORIES Fx Distortion
     AU_MAIN_TYPE kAudioUnitType_Effect
+
+	LV2URI https://github.com/ArborealAudio/STR-X.git
+
     PRODUCT_NAME "STR-X"
     HARDENED_RUNTIME_ENABLE TRUE)
 
@@ -52,24 +59,23 @@ clap_juce_extensions_plugin(TARGET STR-X
 
 juce_generate_juce_header(STR-X)
 
-juce_add_modules(
-    "modules/Arbor_modules")
+juce_add_modules("modules/Arbor_modules")
 
 target_sources(STR-X
-    PRIVATE
-    Source/PluginProcessor.cpp
-    Source/PluginEditor.cpp
-    Source/STR-X.hpp
-    Source/Background.hpp
-    Source/AmpComponent.hpp
-    Source/LookAndFeel.h)
+	PRIVATE
+		Source/PluginProcessor.cpp
+		Source/PluginEditor.cpp
+		Source/STR-X.hpp
+		Source/Background.hpp
+		Source/AmpComponent.hpp
+		Source/LookAndFeel.h)
 
 target_compile_definitions(STR-X
-    PUBLIC
-    JUCE_WEB_BROWSER=0
-        JUCE_USE_CURL=0
-        JUCE_VST3_CAN_REPLACE_VST2=0
-        JUCE_DISPLAY_SPLASH_SCREEN=0)
+	PUBLIC
+		JUCE_WEB_BROWSER=0
+		JUCE_USE_CURL=0
+		JUCE_VST3_CAN_REPLACE_VST2=0
+		JUCE_DISPLAY_SPLASH_SCREEN=0)
 
 if (UNIX AND NOT APPLE)
 	target_link_libraries(STR-X PRIVATE "-static-libgcc" "-static-libstdc++")
