@@ -29,9 +29,15 @@ jobs:
     - name: Linux Build
       if: runner.os == 'Linux'
       run: |
-        docker build -t str_x .
-        docker run -it -v $(pwd):/src str_x
-
+        sudo apt update
+        sudo apt install libasound2-dev libjack-jackd2-dev \
+          ladspa-sdk \
+          libcurl4-openssl-dev  \
+          libfreetype6-dev \
+          libx11-dev libxcomposite-dev libxcursor-dev libxcursor-dev libxext-dev libxinerama-dev libxrandr-dev libxrender-dev \
+          libwebkit2gtk-4.0-dev \
+          libglu1-mesa-dev mesa-common-dev
+          
     - uses: actions/checkout@v3
       with:
         submodules: recursive
