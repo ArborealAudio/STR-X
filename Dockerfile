@@ -5,7 +5,6 @@ RUN apt update && apt install -y \
   wget \
   gcc \
   g++ \
-  clang \
   ninja-build \
   pkg-config \
   libjack-jackd2-dev \

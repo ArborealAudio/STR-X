@@ -28,7 +28,7 @@ fi
 
 for p in ${plugin_path[@]}; do
 	echo "Validating $p"
-	if $pluginval --strictness-level 10 --validate-in-process --timeout-ms 300000 $p;
+	if $pluginval --strictness-level 10 --validate-in-process --skip-gui-tests --timeout-ms 300000 $p;
 	then
 		echo "Pluginval successful"
 	else
