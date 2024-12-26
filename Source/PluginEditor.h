@@ -16,15 +16,6 @@
 #define BLUE_BG 0xff3b537a
 #define LIGHT_ACCENT 0xffdedece
 
-static Typeface::Ptr getCustomFont()
-{
-    return Typeface::createSystemTypefaceFor(BinaryData::MenloRegular_ttf, BinaryData::MenloRegular_ttfSize);
-}
-
-#include "Background.hpp"
-#include "LookAndFeel.h"
-#include "AmpComponent.hpp"
-
 struct StereoButton : TextButton
 {
     StereoButton()
@@ -32,21 +23,21 @@ struct StereoButton : TextButton
         setClickingTogglesState(true);
     }
 
-    CustomLookAndFeel *lnf;
+    // CustomLookAndFeel *lnf;
 
     void paint(Graphics &g) override
     {
         auto bounds = getLocalBounds().reduced(5).toFloat();
         if (isMouseOver())
         {
-            g.setColour(lnf->buttonOutline.darker(0.6f));
+            // g.setColour(lnf->buttonOutline.darker(0.6f));
             g.fillRoundedRectangle(bounds, 3.f);
         }
-        g.setColour(lnf->buttonOutline);
+        // g.setColour(lnf->buttonOutline);
         g.drawRoundedRectangle(bounds, 3.f, 2.f);
 
         auto ellipseWidth = jmin(bounds.getHeight() * 0.75f, bounds.getWidth() * 0.75f);
-        g.setColour(lnf->accentColor);
+        // g.setColour(lnf->accentColor);
         if (getToggleState())
         {
             g.drawEllipse(bounds.getCentreX() * 0.8f - (ellipseWidth / 2), bounds.getCentreY() - (ellipseWidth / 2), ellipseWidth, ellipseWidth, 3.f);
@@ -87,8 +78,6 @@ public:
 private:
     std::atomic<float> *channel;
 
-    CustomLookAndFeel customLookAndFeel;
-
     Slider outVol;
     std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> outVolAttachment;
 
@@ -99,10 +88,7 @@ private:
     ToggleButton legacyTone;
     std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> legacyToneAttach;
 
-    Background background;
 	Colour backgroundColor;
-
-    AmpComponent amp;
 
     TooltipWindow tooltipWindow;
 

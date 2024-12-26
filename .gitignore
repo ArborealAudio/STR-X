@@ -1,5 +1,7 @@
 **/.DS_Store
+.cache/
 build/
 build32/
 .vscode/
-scripts/
+**/.zig-cache/
+**/zig-out/

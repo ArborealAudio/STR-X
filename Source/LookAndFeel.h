@@ -17,7 +17,7 @@ struct CustomLookAndFeel : LookAndFeel_V4,
     CustomLookAndFeel(AudioProcessorValueTreeState &v) : apvts(v)
     {
         apvts.addParameterListener("channel", this);
-        getDefaultLookAndFeel().setDefaultSansSerifTypeface(getCustomFont());
+        // getDefaultLookAndFeel().setDefaultSansSerifTypeface(getCustomFont());
         int channel = *apvts.getRawParameterValue("channel");
         mainColor = channel ? Colours::black : Colour(BLUE_BG);
         accentColor = channel ? Colour(GREEN) : Colour(LIGHT_ACCENT);

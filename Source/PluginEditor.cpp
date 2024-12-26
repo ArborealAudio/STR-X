@@ -11,59 +11,49 @@
 
 //==============================================================================
 STRXAudioProcessorEditor::STRXAudioProcessorEditor (STRXAudioProcessor& p)
-    : AudioProcessorEditor (&p), customLookAndFeel(p.apvts), background(p.apvts), amp(p.apvts, &customLookAndFeel), audioProcessor(p)
+    : AudioProcessorEditor (&p), audioProcessor(p)
 {
     tooltipWindow.setMillisecondsBeforeTipAppears(1000);
 
     logo = Drawable::createFromImageData(BinaryData::logo_svg, BinaryData::logo_svgSize);
 
-    channel = p.apvts.getRawParameterValue("channel");
-    p.apvts.addParameterListener("channel", this);
+    // channel = p.apvts.getRawParameterValue("channel");
+    // p.apvts.addParameterListener("channel", this);
 
-    addAndMakeVisible(background);
-
-    addAndMakeVisible(amp);
-
-	bool chan = (bool)*channel;
+	// bool chan = (bool)*channel;
 
     addAndMakeVisible(outVol);
     outVol.setSliderStyle(Slider::LinearVertical);
     outVol.setTextBoxStyle(Slider::TextBoxAbove, false, 80, 20);
     outVol.setColour(Slider::backgroundColourId, Colour(GRAY));
     outVol.setColour(Slider::thumbColourId, Colours::white);
-    outVol.setColour(Slider::trackColourId, chan ? Colour(GREEN) : Colour(LIGHT_ACCENT));
+    // outVol.setColour(Slider::trackColourId, chan ? Colour(GREEN) : Colour(LIGHT_ACCENT));
     outVol.setColour(Slider::textBoxOutlineColourId, Colours::transparentBlack);
     outVol.setSliderSnapsToMousePosition(false);
 
-	backgroundColor = chan ? Colours::black : Colours::grey;
+	// backgroundColor = chan ? Colours::black : Colours::grey;
 
     hqButton.setButtonText("HQ");
     hqButton.setClickingTogglesState(true);
     hqButton.setRepaintsOnMouseActivity(true);
-    hqButton.setLookAndFeel(&customLookAndFeel);
+    // hqButton.setLookAndFeel(&customLookAndFeel);
     addAndMakeVisible(hqButton);
     hqButton.setTooltip("Enables 4x oversampling with minimal latency");
     
     renderHQ.setButtonText("HQ Rendering");
     renderHQ.setClickingTogglesState(true);
     renderHQ.setRepaintsOnMouseActivity(true);
-    renderHQ.setLookAndFeel(&customLookAndFeel);
+    // renderHQ.setLookAndFeel(&customLookAndFeel);
     addAndMakeVisible(renderHQ);
     renderHQ.setTooltip("Enables 4x oversampling during rendering, using higher quality filters with fully linear phase");
 
     addAndMakeVisible(stereo);
-    stereo.lnf = &customLookAndFeel;
-    stereoAttach = std::make_unique<AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, "stereo", stereo);
+    // stereo.lnf = &customLookAndFeel;
 
     legacyTone.setButtonText("Use v1.0 tone controls");
     legacyTone.setClickingTogglesState(true);
     legacyTone.setRepaintsOnMouseActivity(true);
     addAndMakeVisible(legacyTone);
-
-    outVolAttachment = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(p.apvts, "outVol", outVol);
-    hqButtonAttach = std::make_unique<AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, "hq", hqButton);
-    renderButtonAttach = std::make_unique<AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, "renderHQ", renderHQ);
-    legacyToneAttach = std::make_unique<AudioProcessorValueTreeState::ButtonAttachment>(p.apvts, "legacyTone", legacyTone);
 
     setResizable(true, true);
     getConstrainer()->setMinimumSize(500, 323);
@@ -73,7 +63,7 @@ STRXAudioProcessorEditor::STRXAudioProcessorEditor (STRXAudioProcessor& p)
 
 STRXAudioProcessorEditor::~STRXAudioProcessorEditor()
 {
-    audioProcessor.apvts.removeParameterListener("channel", this);
+    // audioProcessor.apvts.removeParameterListener("channel", this);
     hqButton.setLookAndFeel(nullptr);
     renderHQ.setLookAndFeel(nullptr);
 }
@@ -92,12 +82,6 @@ void STRXAudioProcessorEditor::resized()
     auto bounds = getLocalBounds().reduced(10);
     const auto w = bounds.getWidth();
     const auto h = bounds.getHeight();
-
-    background.setBounds(bounds.removeFromTop(h / 3));
-
-    amp.setBounds(bounds.removeFromTop(bounds.getHeight() * 0.85f));
-
-    outVol.setBounds(background.getBounds().withTrimmedLeft(w * 0.9f).reduced(5));
 
     hqButton.setBounds(bounds.removeFromLeft(w * 0.1f));
     renderHQ.setBounds(bounds.removeFromLeft(w * 0.15f));

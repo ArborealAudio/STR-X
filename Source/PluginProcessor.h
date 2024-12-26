@@ -9,25 +9,15 @@
 #pragma once
 
 #include <JuceHeader.h>
-
-/*input * (max-min) + min*/
-static float cookParams(float valueToCook, float minValue, float maxValue) 
-{
-    return valueToCook * (maxValue - minValue) + minValue;
-}
-
-#include "STR-X.hpp"
-
-// #if NDEBUG
-#define USE_SIMD 1
-// #endif
+#include <Arbor_modules.h>
+#include "zig/processor.h"
 
 //==============================================================================
 /**
 */
 class STRXAudioProcessor  : public AudioProcessor,
-                            public AudioProcessorValueTreeState::Listener,
-                            public clap_juce_extensions::clap_properties
+                            public AudioProcessorValueTreeState::Listener
+                            // public clap_juce_extensions::clap_properties
 {
 public:
     //==============================================================================
@@ -46,7 +36,7 @@ public:
     void processBlock (AudioBuffer<double>&, MidiBuffer&) override;
     void processDoubleBuffer(AudioBuffer<double> &);
 
-    bool supportsDoublePrecisionProcessing() const override { return true; }
+    bool supportsDoublePrecisionProcessing() const override { return false; }
 
     //==============================================================================
     AudioProcessorEditor* createEditor() override;
@@ -75,85 +65,25 @@ public:
     
     void updateOversample();
 
-    String getWrapperTypeString()
-    {
-        if (wrapperType == wrapperType_Undefined && is_clap)
-            return "CLAP";
+    // String getWrapperTypeString()
+    // {
+    //     if (wrapperType == wrapperType_Undefined && is_clap)
+    //         return "CLAP";
 
-        return juce::AudioProcessor::getWrapperTypeDescription(wrapperType);
-    }
+    //     return juce::AudioProcessor::getWrapperTypeDescription(wrapperType);
+    // }
     
     AudioProcessorValueTreeState apvts;
-
-    std::vector<std::unique_ptr<dsp::Oversampling<double>>> oversample;
 
     int lastUIWidth, lastUIHeight;
 
 private:
 
-    int osIndex = 0;
-    double lastSampleRate = 0.0;
-    double lastDownSampleRate = 0.0;
-    int numSamples = 0;
-
-    bool isOversampled = false;
-
     AudioProcessorValueTreeState::ParameterLayout createParameters();
 
-    NormalisableRange<float> nRange, outVolRange;
+    // NormalisableRange<float> nRange, outVolRange;
 
-    strix::BoolParameter *hq, *renderHQ;
-    strix::ChoiceParameter *stereo;
-    strix::FloatParameter *outVol_dB;
-    float lastOutGain = 0.f;
-
-    AudioBuffer<double> doubleBuffer;
-
-    AmpProcessor<vec> stereoAmp;
-    AmpProcessor<double> monoAmp;
-
-    strix::SIMD<double, dsp::AudioBlock<double>, strix::AudioBlock<vec>> simd;
-
-    std::queue<String> msgs;
-    std::mutex mutex;
-    std::atomic<bool> newMessages = false;
-
-    void handleMessage()
-    {
-        int num = msgs.size();
-        for (size_t i = 0; i < num; ++i)
-        {
-            auto &msg = msgs.front();
-            if (msg == "renderHQ" || msg == "hq")
-            {
-                updateOversample();
-
-                dsp::ProcessSpec newSpec;
-                newSpec.sampleRate = lastSampleRate;
-                newSpec.maximumBlockSize = numSamples * oversample[osIndex]->getOversamplingFactor();
-                newSpec.numChannels = getTotalNumInputChannels();
-
-                stereoAmp.prepare(newSpec);
-                monoAmp.prepare(newSpec);
-
-                simd.setInterleavedBlockSize(newSpec.numChannels, newSpec.maximumBlockSize);
-            }
-            else if (msg == "legacyTone")
-            {
-                stereoAmp.eq.updateAllFilters();
-                monoAmp.eq.updateAllFilters();
-            }
-            else if (msg == "mode")
-            {
-                stereoAmp.preAmp.needCrossoverUpdate = true;
-                monoAmp.preAmp.needCrossoverUpdate = true;
-            }
-
-            msgs.pop();
-        }
-
-        newMessages = false;
-    }
+    Processor *proc;
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (STRXAudioProcessor)
