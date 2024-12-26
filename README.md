@@ -1,5 +1,7 @@
 # STR-X
 
+## !UNSTABLE!: Sparsely-tested rewrite, stuff will be broken
+
 ## About
 
 A custom digital guitar amp, made in part to teach myself how to program plugins--but I'll also be updating it every now and then as new feature ideas come to mind.
