@@ -103,3 +103,10 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
 )
+
+if (WIN32)
+	target_link_libraries(${CMAKE_PROJECT_NAME}
+		PRIVATE
+			ntdll
+	)
+endif()
