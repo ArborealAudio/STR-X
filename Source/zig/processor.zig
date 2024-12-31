@@ -1,8 +1,11 @@
 const std = @import("std");
 const math = std.math;
 const util = @import("util.zig");
+const map = util.map;
 const DoubleVec = util.DoubleVec;
 const AudioBuffer = util.AudioBuffer32;
+const Filter = @import("Filter.zig");
+const LRFilter = @import("LRFilter.zig");
 
 const Arena = std.heap.ArenaAllocator;
 const Allocator = std.mem.Allocator;
@@ -29,18 +32,18 @@ const Processor = struct {
 
         self.ts9.prepare(sample_rate);
         self.preamp.prepare(sample_rate, num_channels);
+        self.tone_stack.prepare(sample_rate);
     }
 
     fn reset(p: *Processor) void {
-        // for (0..p.buffer.num_channels) |ch| {
-        //     @memset(p.buffer.data[ch], 0);
-        // }
         p.ts9.reset();
         p.preamp.reset();
     }
 
     fn paramChange(self: *Processor, id: []const u8, val: f32) void {
         // only prollem is...ain't threadsafe
+        // unless we basically promise to ourself never to modify `self.params` outside
+        // this fn?
         const param_fields = std.meta.fields(Params);
         inline for (param_fields) |field| {
             if (std.mem.eql(u8, field.name, id)) {
@@ -58,6 +61,13 @@ const Processor = struct {
                     else => {},
                 }
                 std.debug.print("Changed {s}: {}\n", .{ field.name, param.* });
+                if (std.mem.eql(u8, field.name, "bass") or
+                    std.mem.eql(u8, field.name, "mid") or
+                    std.mem.eql(u8, field.name, "treble") or
+                    std.mem.eql(u8, field.name, "presence"))
+                {
+                    self.update_tone_stack.store(true, .release);
+                }
             }
         }
     }
@@ -80,9 +90,14 @@ const Processor = struct {
             p.preamp.updateMode();
             p.update_amp_mode.store(false, .release);
         }
+        if (p.update_tone_stack.load(.acquire)) {
+            p.tone_stack.update();
+            p.update_tone_stack.store(false, .release);
+        }
         if (p.params.pedal_gain > 0)
             p.ts9.process(buffer);
         p.preamp.process(buffer);
+        p.tone_stack.process(buffer);
 
         const out_gain: f32 = math.pow(f32, 10.0, p.params.out_vol / 20);
         for (buffer.data) |ch| {
@@ -107,10 +122,12 @@ const Processor = struct {
 
     ts9: TSX,
     preamp: PreAmp,
+    tone_stack: ToneStack,
 
     params: *Params,
 
     update_amp_mode: AtomicFlag = AtomicFlag.init(false),
+    update_tone_stack: AtomicFlag = AtomicFlag.init(false),
 };
 
 const Params = struct {
@@ -157,6 +174,10 @@ export fn processor_init(num_channels: u32) ?*Processor {
         },
         .preamp = PreAmp.init(params, allocator, num_channels) catch |e| {
             std.log.err("PreAmp init: {!}\n", .{e});
+            return null;
+        },
+        .tone_stack = ToneStack.init(params, allocator, num_channels) catch |e| {
+            std.log.err("ToneStack init: {!}\n", .{e});
             return null;
         },
     };
@@ -265,9 +286,6 @@ const FloatParam = struct {
     }
 };
 
-const Filter = @import("Filter.zig");
-const LRFilter = @import("LRFilter.zig");
-
 const PreAmp = struct {
     hpf: Filter,
     dc_removal: Filter,
@@ -307,7 +325,6 @@ const PreAmp = struct {
         self.lr.reset();
     }
 
-    // BUG: This only works like once
     fn updateMode(self: *PreAmp) void {
         switch (self.state.amp_mode) {
             .Thick => {
@@ -398,8 +415,90 @@ const PreAmp = struct {
     }
 };
 
-// TS9 guitar pedal
+const ToneStack = struct {
+    const FilterList = enum {
+        hpf,
+        bpf,
+        lpf,
+        bass,
+        mid,
+        treble,
+        presence,
+        bright,
+    };
+    const FilterArray = std.EnumArray(FilterList, Filter);
 
+    filters: FilterArray,
+    sample_rate: f32 = 44100,
+
+    state: *const Params,
+
+    pub fn init(params: *const Params, arena: Allocator, num_ch: u32) !ToneStack {
+        var ts: ToneStack = .{
+            .filters = FilterArray.init(.{
+                .hpf = try Filter.init(arena, num_ch, .FirstOrderHighpass, 750, 0),
+                .lpf = try Filter.init(arena, num_ch, .FirstOrderLowpass, 10e3, 0),
+                .bpf = try Filter.init(arena, num_ch, .Bandpass, 80, math.sqrt1_2),
+                .bright = try Filter.init(arena, num_ch, .FirstOrderHighshelf, 2500, math.sqrt1_2),
+                .bass = try Filter.init(arena, num_ch, .FirstOrderLowshelf, 150, 0.606),
+                .mid = try Filter.init(arena, num_ch, .Peak, 600, 0.5),
+                .treble = try Filter.init(arena, num_ch, .FirstOrderHighshelf, 1500, 0.3),
+                .presence = try Filter.init(arena, num_ch, .Peak, 4000, 0.6),
+            }),
+            .state = params,
+        };
+        ts.update();
+        return ts;
+    }
+
+    pub fn update(self: *ToneStack) void {
+        // remap user-facing values to dB-based values
+        var bass = map(f32, self.state.bass / 10, -12, 12);
+        var mid = map(f32, self.state.mid / 10, -7, 7);
+        var treble = map(f32, self.state.treble / 10, -14, 14);
+        var presence = map(f32, self.state.presence / 10, -8, 8);
+
+        // convert to linear
+        bass = math.pow(f32, 10, bass / 20);
+        self.filters.getPtr(.bass).setGain(bass, self.sample_rate);
+        mid = math.pow(f32, 10, mid / 20);
+        self.filters.getPtr(.mid).setGain(mid, self.sample_rate);
+        treble = math.pow(f32, 10, treble / 20);
+        self.filters.getPtr(.treble).setGain(treble, self.sample_rate);
+        presence = math.pow(f32, 10, presence / 20);
+        self.filters.getPtr(.presence).setGain(presence, self.sample_rate);
+    }
+
+    pub fn prepare(self: *ToneStack, sample_rate: f64) void {
+        self.sample_rate = @floatCast(sample_rate);
+        for (&self.filters.values) |*f| {
+            f.setSampleRate(@floatCast(sample_rate));
+        }
+    }
+
+    pub fn process(self: *ToneStack, buffer: AudioBuffer) void {
+        for (buffer.data, 0..) |ch, ch_idx| {
+            for (ch) |*sample| {
+                const in = sample.*;
+                var y = self.filters.getPtr(.lpf).processSample(ch_idx, in);
+                const yhp = self.filters.getPtr(.hpf).processSample(ch_idx, y);
+                const ybp = self.filters.getPtr(.bpf).processSample(ch_idx, y);
+                y = yhp + ybp;
+                y = self.filters.getPtr(.bass).processSample(ch_idx, y);
+                y = self.filters.getPtr(.mid).processSample(ch_idx, y);
+                y = self.filters.getPtr(.treble).processSample(ch_idx, y);
+                y = self.filters.getPtr(.presence).processSample(ch_idx, y);
+                if (self.state.bright) {
+                    y = self.filters.getPtr(.bright).processSample(ch_idx, y);
+                }
+
+                sample.* = y;
+            }
+        }
+    }
+};
+
+// TS9 guitar pedal
 const TSX = struct {
     hpf: Filter,
     lpf: Filter,
