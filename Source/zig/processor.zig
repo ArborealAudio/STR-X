@@ -33,11 +33,13 @@ const Processor = struct {
         self.ts9.prepare(sample_rate);
         self.preamp.prepare(sample_rate, num_channels);
         self.tone_stack.prepare(sample_rate);
+        self.poweramp.prepare(sample_rate);
     }
 
     fn reset(p: *Processor) void {
         p.ts9.reset();
         p.preamp.reset();
+        p.poweramp.reset();
     }
 
     fn paramChange(self: *Processor, id: []const u8, val: f32) void {
@@ -98,6 +100,7 @@ const Processor = struct {
             p.ts9.process(buffer);
         p.preamp.process(buffer);
         p.tone_stack.process(buffer);
+        p.poweramp.process(buffer);
 
         const out_gain: f32 = math.pow(f32, 10.0, p.params.out_vol / 20);
         for (buffer.data) |ch| {
@@ -123,6 +126,7 @@ const Processor = struct {
     ts9: TSX,
     preamp: PreAmp,
     tone_stack: ToneStack,
+    poweramp: PowerAmp,
 
     params: *Params,
 
@@ -178,6 +182,10 @@ export fn processor_init(num_channels: u32) ?*Processor {
         },
         .tone_stack = ToneStack.init(params, allocator, num_channels) catch |e| {
             std.log.err("ToneStack init: {!}\n", .{e});
+            return null;
+        },
+        .poweramp = PowerAmp.init(params, allocator, num_channels) catch |e| {
+            std.log.err("PowerAmp init: {!}\n", .{e});
             return null;
         },
     };
@@ -495,6 +503,104 @@ const ToneStack = struct {
                 sample.* = y;
             }
         }
+    }
+};
+
+const PowerAmp = struct {
+    /// filters for sep. pos & neg asym. saturation
+    dc_removal: [2]Filter,
+    state: *const Params,
+
+    pub fn init(params: *const Params, arena: Allocator, num_ch: u32) !PowerAmp {
+        return .{
+            .dc_removal = .{
+                try Filter.init(arena, num_ch, .Highpass, 10, math.sqrt1_2),
+                try Filter.init(arena, num_ch, .Highpass, 10, math.sqrt1_2),
+            },
+            .state = params,
+        };
+    }
+
+    pub fn prepare(self: *PowerAmp, sample_rate: f64) void {
+        for (&self.dc_removal) |*f| {
+            f.setSampleRate(@floatCast(sample_rate));
+        }
+    }
+
+    pub fn reset(self: *PowerAmp) void {
+        for (&self.dc_removal) |*f| {
+            f.reset();
+        }
+    }
+
+    pub fn process(self: *PowerAmp, buffer: AudioBuffer) void {
+        const gain = self.state.master_gain;
+        switch (self.state.gain_ch) {
+            .HiGain => {
+                for (buffer.data, 0..) |ch, ch_idx| {
+                    for (ch) |*sample| {
+                        sample.* = self.processSampleHiGain(sample.*, gain, ch_idx);
+                    }
+                }
+            },
+            .LowGain => {
+                for (buffer.data, 0..) |ch, ch_idx| {
+                    for (ch) |*sample| {
+                        sample.* = self.processSampleLoGain(sample.*, gain, ch_idx);
+                    }
+                }
+            },
+        }
+    }
+
+    fn processSampleHiGain(self: *PowerAmp, x: f32, gain: f32, ch: usize) f32 {
+        const g = gain * 0.6;
+        var y = x * g;
+
+        // asym waveshaping
+        var yp = saturate(y, 1.7, 23.6, 1.01);
+        var yn = saturate(y, 1.7, 1.01, 23.6);
+
+        yp = self.dc_removal[0].processSample(ch, yp);
+        yn = self.dc_removal[1].processSample(ch, yn);
+
+        yp = saturate(yp, 4.0, 1.01, 1.01);
+        yn = saturate(yn, 4.0, 1.01, 1.01);
+
+        y = yp + yn;
+
+        y *= 0.1767;
+
+        return y;
+    }
+
+    fn processSampleLoGain(self: *PowerAmp, x: f32, gain: f32, ch: usize) f32 {
+        const g = gain * 0.6;
+        var y = x * g;
+
+        // asym waveshaping
+        var yp = saturate(y, 1.7, 23.6, 1.01);
+        var yn = saturate(y, 1.7, 1.01, 23.6);
+
+        yp = self.dc_removal[0].processSample(ch, yp);
+        yn = self.dc_removal[1].processSample(ch, yn);
+
+        yp = saturate(yp, 2, 2.01, 2.01);
+        yn = saturate(yn, 2, 2.01, 2.01);
+
+        y = yp + yn;
+
+        y *= 0.1767;
+
+        return y;
+    }
+
+    fn saturate(x: f32, g: f32, ln: f32, lp: f32) f32 {
+        const gx = g * x;
+        if (x <= 0)
+            return gx / (1 - (gx / ln))
+        else
+            return gx / (1 + (gx / lp));
     }
 };
 
