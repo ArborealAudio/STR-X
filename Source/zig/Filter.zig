@@ -18,6 +18,7 @@ pub const Type = enum {
     Lowpass,
     Highpass,
     Bandpass,
+    Peak,
     FirstOrderLowpass,
     FirstOrderHighpass,
     FirstOrderLowshelf,
@@ -29,7 +30,7 @@ cutoff: f32,
 reso: f32,
 gain: f32 = 1,
 coeffs: Coeffs,
-filter_type: Type = .Lowpass,
+filter_type: Type,
 
 xn: [][]f32,
 yn: [][]f32,
@@ -95,6 +96,11 @@ pub fn setReso(self: *Filter, reso: f32, sample_rate: f32) void {
     self.setCoeffs(sample_rate);
 }
 
+pub fn setGain(self: *Filter, gain: f32, sample_rate: f32) void {
+    self.gain = gain;
+    self.setCoeffs(sample_rate);
+}
+
 fn setCoeffs(self: *Filter, sr: f32) void {
     const w0 = std.math.tau * (self.cutoff / sr);
     const q = 1.0 / (2.0 * self.reso);
@@ -145,6 +151,25 @@ fn setCoeffs(self: *Filter, sr: f32) void {
             b1 = -r1 / 2.0;
             b0 = (r0 - b1) / 2.0;
             b2 = -b0 - b1;
+        },
+        .Peak => {
+            const k = @tan(std.math.pi * self.cutoff / sr);
+            const k2 = k * k;
+            if (self.gain >= 0) {
+                const norm = 1 / (1 + 1 / self.reso * k + k2);
+                b0 = (1 + self.gain / self.reso * k + k2) * norm;
+                b1 = 2 * (k2 - 1) * norm;
+                b2 = (1 - self.gain / self.reso * k + k2) * norm;
+                a1 = b1;
+                a2 = (1 - 1 / self.reso * k + k2) * norm;
+            } else {
+                const norm = 1 / (1 + self.gain / self.reso * k + k2);
+                b0 = (1 + 1 / self.reso * k + k2) * norm;
+                b1 = 2 * (k2 - 1) * norm;
+                b2 = (1 - 1 / self.reso * k + k2) * norm;
+                a1 = b1;
+                b2 = (1 - self.gain / self.reso * k + k2) * norm;
+            }
         },
         .FirstOrderLowpass => {
             const fc = self.cutoff / sr;
