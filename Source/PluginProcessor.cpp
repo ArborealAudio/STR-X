@@ -8,7 +8,6 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
-#include "juce_audio_processors/juce_audio_processors.h"
 #include "zig/processor.h"
 
 //==============================================================================
@@ -31,11 +30,14 @@ STRXAudioProcessor::STRXAudioProcessor()
 
     proc = processor_init(getTotalNumInputChannels());
     assert(proc);
+    apvts.addParameterListener("amp", this);
     apvts.addParameterListener("amp_mode", this);
     apvts.addParameterListener("gain_ch", this);
     apvts.addParameterListener("bright", this);
     apvts.addParameterListener("pedal_gain", this);
     apvts.addParameterListener("preamp_gain", this);
+    apvts.addParameterListener("low_gain", this);
+    apvts.addParameterListener("hi_gain", this);
     apvts.addParameterListener("bass", this);
     apvts.addParameterListener("mid", this);
     apvts.addParameterListener("treble", this);
@@ -51,6 +53,8 @@ STRXAudioProcessor::~STRXAudioProcessor()
     apvts.removeParameterListener("bright", this);
     apvts.removeParameterListener("pedal_gain", this);
     apvts.removeParameterListener("preamp_gain", this);
+    apvts.removeParameterListener("low_gain", this);
+    apvts.removeParameterListener("hi_gain", this);
     apvts.removeParameterListener("bass", this);
     apvts.removeParameterListener("mid", this);
     apvts.removeParameterListener("treble", this);
@@ -189,7 +193,8 @@ bool STRXAudioProcessor::hasEditor() const
 
 AudioProcessorEditor *STRXAudioProcessor::createEditor()
 {
-    return new STRXAudioProcessorEditor(*this);
+    // return new STRXAudioProcessorEditor(*this);
+    return new GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
@@ -237,8 +242,15 @@ AudioProcessorValueTreeState::ParameterLayout STRXAudioProcessor::createParamete
     using bParam = strix::BoolParameter;
     using cParam = strix::ChoiceParameter;
 
+    params.push_back(std::make_unique<cParam>(ParameterID("amp", 1), "Amp", StringArray{
+                                                  "STR_X",
+                                                  "STR_Y",
+                                              }, 0));
     params.push_back(std::make_unique<fParam>(ParameterID("preamp_gain", 1), "Preamp Gain", gainRange, 3.f));
-    params.push_back(std::make_unique<cParam>(ParameterID("amp_mode", 1), "Mode", StringArray{"Thick", "Normal", "Open"}, 1));
+    params.push_back(std::make_unique<fParam>(ParameterID("low_gain", 1), "Low Gain", nRange, 5.f));
+    params.push_back(std::make_unique<fParam>(ParameterID("hi_gain", 1), "High Gain", nRange, 5.f));
+    params.push_back(std::make_unique<cParam>(ParameterID("amp_mode", 1), "Mode",
+                                                  StringArray{"Thick", "Normal", "Open"}, 1));
     params.push_back(std::make_unique<fParam>(ParameterID("bass", 1), "Bass", nRange, 5.f));
     params.push_back(std::make_unique<fParam>(ParameterID("mid", 1), "Mid", nRange, 5.f));
     params.push_back(std::make_unique<fParam>(ParameterID("treble", 1), "Treble", nRange, 5.f));
@@ -246,9 +258,11 @@ AudioProcessorValueTreeState::ParameterLayout STRXAudioProcessor::createParamete
     params.push_back(std::make_unique<bParam>(ParameterID("bright", 1), "Bright", false));
     params.push_back(std::make_unique<fParam>(ParameterID("pedal_gain", 1), "Pedal Gain", 0.f, 10.0f, 0.f));
     params.push_back(std::make_unique<fParam>(ParameterID("master_gain", 1), "Power Amp Gain", gainRange, 5.f));
-    params.push_back(std::make_unique<cParam>(ParameterID("gain_ch", 1), "Channel", StringArray{"Lo", "Hi"}, 1));
+    params.push_back(std::make_unique<cParam>(ParameterID("gain_ch", 1), "Channel",
+                                              StringArray{"Lo", "Hi"}, 1));
     params.push_back(std::make_unique<fParam>(ParameterID("out_vol", 1), "Output Volume", outVolRange, 0.0));
-    params.push_back(std::make_unique<cParam>(ParameterID("stereo", 1), "Mono/Stereo", StringArray{"Mono", "Stereo"}, 0));
+    params.push_back(std::make_unique<cParam>(ParameterID("stereo", 1), "Mono/Stereo", 
+                                              StringArray{"Mono", "Stereo"}, 0));
     
     return {params.begin(), params.end()};
 }

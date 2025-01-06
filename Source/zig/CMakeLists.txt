@@ -15,14 +15,18 @@ set(LIB_ARTIFACT "${LIB_ARTIFACT_PATH}/${LIB_ARTIFACT_NAME}")
 if (UNIX AND NOT APPLE)
   set(LIB_TARGET "native-linux-musl")
 else()
-  set(LIB_TARGET "native")
+  if (APPLE)
+    set (LIB_TARGET "native-macos.11.0.0")
+  else ()
+    set(LIB_TARGET "native")
+  endif()
 endif()
 
 add_custom_command(OUTPUT ${LIB_ARTIFACT}
   VERBATIM
   COMMAND zig ARGS build -Doptimize=Debug -Dtarget=${LIB_TARGET}
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  DEPENDS processor.zig util.zig build.zig
+  DEPENDS processor.zig util.zig build.zig Str_X.zig Str_Y.zig
 )
 
 add_custom_target(processor_build DEPENDS ${LIB_ARTIFACT})
