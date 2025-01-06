@@ -25,13 +25,14 @@ s4: []f32,
 
 sample_rate: f32 = 44100,
 cutoff: f32 = 2000,
-type: Type = .Lowpass,
+type: Type,
 
 allocator: Allocator,
 
-pub fn init(allocator: Allocator, num_ch: u32) !LRFilter {
+pub fn init(allocator: Allocator, num_ch: u32, filter_type: Type) !LRFilter {
     var self = LRFilter{
         .allocator = allocator,
+        .type = filter_type,
         .g = 0,
         .r2 = 0,
         .h = 0,
