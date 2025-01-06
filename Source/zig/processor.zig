@@ -10,54 +10,74 @@ const LRFilter = @import("LRFilter.zig");
 const Arena = std.heap.ArenaAllocator;
 const Allocator = std.mem.Allocator;
 
-const AmpMode = enum {
-    Thick,
-    Normal,
-    Open,
-};
-
-const GainChannel = enum {
-    LowGain,
-    HiGain,
-};
-
+/// Base Processor interface
 const Processor = struct {
-    fn prepare(
-        self: *Processor,
-        sample_rate: f64,
-        num_samples: u32,
-        num_channels: u32,
-    ) !void {
-        self.max_frames = num_samples;
+    prepare: *const fn (self: *Processor, sample_rate: f64, num_samples: u32, num_channels: u32) void,
+    reset: *const fn (self: *Processor) void,
+    process: *const fn (self: *Processor, buffer: AudioBuffer) void,
+};
 
-        self.ts9.prepare(sample_rate);
-        self.preamp.prepare(sample_rate, num_channels);
-        self.tone_stack.prepare(sample_rate);
-        self.poweramp.prepare(sample_rate);
+// Parent struct for all possible processors, owning the arena so we can
+// clean up all resources in one fell swoop
+const MainProcessor = struct {
+    const AmpType = enum {
+        StrX,
+        // StrY,
+        // StrZ,
+    };
+
+    const ProcArray = std.EnumArray(AmpType, *Processor);
+
+    procs: ProcArray,
+    active_proc: AmpType = .StrX,
+
+    arena_impl: *Arena,
+    arena: Allocator,
+
+    max_frames: u32,
+
+    pub fn init(num_ch: u32) !*MainProcessor {
+        const default_buffer_length = 256;
+        var arena = try std.heap.c_allocator.create(Arena);
+        arena.* = Arena.init(std.heap.raw_c_allocator);
+        const allocator = arena.allocator();
+
+        const params = try allocator.create(Params);
+        params.* = .{};
+        const self = try allocator.create(MainProcessor);
+        self.* = .{
+            .arena_impl = arena,
+            .arena = allocator,
+            .procs = ProcArray.init(.{
+                .StrX = try StrX.init(allocator, num_ch, params),
+            }),
+            .max_frames = default_buffer_length,
+        };
+        return self;
     }
 
-    fn reset(p: *Processor) void {
-        p.ts9.reset();
-        p.preamp.reset();
-        p.poweramp.reset();
+    pub fn getCurrentProc(self: *MainProcessor) *Processor {
+        return self.procs.get(self.active_proc);
     }
 
-    fn paramChange(self: *Processor, id: []const u8, val: f32) void {
+    pub fn paramChange(self: *MainProcessor, id: []const u8, val: f32) void {
         // only prollem is...ain't threadsafe
         // unless we basically promise to ourself never to modify `self.params` outside
         // this fn?
         const param_fields = std.meta.fields(Params);
+        // TODO: Implement for all amps
+        const str_x: *StrX = @fieldParentPtr("proc", self.procs.get(.StrX));
         inline for (param_fields) |field| {
             if (std.mem.eql(u8, field.name, id)) {
-                const param = &@field(self.params, field.name);
+                const param = &@field(str_x.params, field.name);
                 switch (field.type) {
                     f32 => param.* = val,
                     bool => param.* = val > 0,
-                    AmpMode => {
+                    StrX.AmpMode => {
                         param.* = @enumFromInt(@as(u32, @intFromFloat(val)));
-                        self.update_amp_mode.store(true, .release);
+                        str_x.update_amp_mode.store(true, .release);
                     },
-                    GainChannel => {
+                    StrX.GainChannel => {
                         param.* = @enumFromInt(@as(u32, @intFromFloat(val)));
                     },
                     else => {},
@@ -68,41 +88,110 @@ const Processor = struct {
                     std.mem.eql(u8, field.name, "treble") or
                     std.mem.eql(u8, field.name, "presence"))
                 {
-                    self.update_tone_stack.store(true, .release);
+                    str_x.update_tone_stack.store(true, .release);
                 }
             }
         }
     }
 
-    fn process(
-        p: *Processor,
-        c_buffer: [*][*]f32,
+    pub fn process(self: *MainProcessor, c_buffer: [*]const [*]f32, num_frames: u32, num_ch: u32) void {
+        const buffer: AudioBuffer = .{
+            .data = &.{
+                c_buffer[0][0..num_frames],
+                c_buffer[1][0..num_frames],
+            },
+            .num_frames = num_frames,
+            .num_channels = num_ch,
+        };
+
+        const amp = self.getCurrentProc();
+        amp.process(amp, buffer);
+    }
+};
+
+const StrX = struct {
+    pub const AmpMode = enum {
+        Thick,
+        Normal,
+        Open,
+    };
+    pub const GainChannel = enum {
+        LowGain,
+        HiGain,
+    };
+
+    pub fn init(arena: Allocator, num_ch: u32, params: *Params) !*Processor {
+        const self: *StrX = try arena.create(StrX);
+        self.* = .{
+            .proc = .{
+                .prepare = prepare,
+                .reset = reset,
+                .process = process,
+            },
+            .params = params,
+            .ts9 = TSX.init(arena, num_ch, &params.pedal_gain) catch |e| {
+                std.log.err("TS9 init: {!}\n", .{e});
+                return error.TSXInitFailed;
+            },
+            .preamp = PreAmp.init(params, arena, num_ch) catch |e| {
+                std.log.err("PreAmp init: {!}\n", .{e});
+                return error.PreAmpInitFailed;
+            },
+            .tone_stack = ToneStack.init(params, arena, num_ch) catch |e| {
+                std.log.err("ToneStack init: {!}\n", .{e});
+                return error.ToneStackInitFailed;
+            },
+            .poweramp = PowerAmp.init(params, arena, num_ch) catch |e| {
+                std.log.err("PowerAmp init: {!}\n", .{e});
+                return error.PowerAmpInitFailed;
+            },
+        };
+
+        return &self.proc;
+    }
+
+    fn prepare(
+        proc: *Processor,
+        sample_rate: f64,
         num_samples: u32,
         num_channels: u32,
     ) void {
-        const buffer: AudioBuffer = .{
-            .num_channels = num_channels,
-            .num_frames = num_samples,
-            .data = &.{
-                c_buffer[0][0..num_samples],
-                c_buffer[1][0..num_samples],
-            },
-        };
-        if (p.update_amp_mode.load(.acquire)) {
-            p.preamp.updateMode();
-            p.update_amp_mode.store(false, .release);
-        }
-        if (p.update_tone_stack.load(.acquire)) {
-            p.tone_stack.update();
-            p.update_tone_stack.store(false, .release);
-        }
-        if (p.params.pedal_gain > 0)
-            p.ts9.process(buffer);
-        p.preamp.process(buffer);
-        p.tone_stack.process(buffer);
-        p.poweramp.process(buffer);
+        _ = num_samples;
+        const self: *StrX = @fieldParentPtr("proc", proc);
 
-        const out_gain: f32 = math.pow(f32, 10.0, p.params.out_vol / 20);
+        self.ts9.prepare(sample_rate);
+        self.preamp.prepare(sample_rate, num_channels);
+        self.tone_stack.prepare(sample_rate);
+        self.poweramp.prepare(sample_rate);
+    }
+
+    fn reset(p: *Processor) void {
+        const self: *StrX = @fieldParentPtr("proc", p);
+        self.ts9.reset();
+        self.preamp.reset();
+        self.poweramp.reset();
+    }
+
+    fn process(
+        p: *Processor,
+        buffer: AudioBuffer,
+    ) void {
+        const self: *StrX = @fieldParentPtr("proc", p);
+        if (self.update_amp_mode.load(.acquire)) {
+            self.preamp.updateMode();
+            self.update_amp_mode.store(false, .release);
+        }
+        if (self.update_tone_stack.load(.acquire)) {
+            self.tone_stack.update();
+            self.update_tone_stack.store(false, .release);
+        }
+        if (self.params.pedal_gain > 0)
+            self.ts9.process(buffer);
+        self.preamp.process(buffer);
+        self.tone_stack.process(buffer);
+        self.poweramp.process(buffer);
+
+        const out_gain: f32 = math.pow(f32, 10.0, self.params.out_vol / 20);
         for (buffer.data) |ch| {
             for (ch) |*sample| {
                 sample.* = sample.* * out_gain;
@@ -110,18 +199,9 @@ const Processor = struct {
         }
     }
 
-    fn process64(
-        _: *Processor,
-        _: [*][*]f64,
-        _: u32,
-        _: u32,
-    ) callconv(.C) void {}
-
     const AtomicFlag = std.atomic.Value(bool);
 
-    arena_impl: *Arena,
-    allocator: Allocator,
-    max_frames: u32,
+    proc: Processor,
 
     ts9: TSX,
     preamp: PreAmp,
@@ -135,8 +215,8 @@ const Processor = struct {
 };
 
 const Params = struct {
-    amp_mode: AmpMode = .Normal,
-    gain_ch: GainChannel = .HiGain,
+    amp_mode: StrX.AmpMode = .Normal,
+    gain_ch: StrX.GainChannel = .HiGain,
     bright: bool = false,
 
     pedal_gain: f32 = 0,
@@ -149,77 +229,42 @@ const Params = struct {
     out_vol: f32 = 0,
 };
 
-export fn processor_init(num_channels: u32) ?*Processor {
-    var arena = std.heap.c_allocator.create(Arena) catch |e| {
-        std.log.err("{!}\n", .{e});
+export fn processor_init(num_channels: u32) ?*MainProcessor {
+    return MainProcessor.init(num_channels) catch |e| {
+        std.log.err("Processor init fail: {!}\n", .{e});
         return null;
     };
-    arena.* = Arena.init(std.heap.raw_c_allocator);
-    const allocator = arena.allocator();
-
-    const proc = allocator.create(Processor) catch |e| {
-        std.log.err("{!}\n", .{e});
-        return null;
-    };
-    const params = allocator.create(Params) catch |e| {
-        std.log.err("{!}\n", .{e});
-        return null;
-    };
-    params.* = .{};
-    const default_buffer_length = 256;
-    proc.* = .{
-        .params = params,
-        .arena_impl = arena,
-        .allocator = allocator,
-        .max_frames = default_buffer_length,
-        .ts9 = TSX.init(allocator, num_channels, &params.pedal_gain) catch |e| {
-            std.log.err("TS9 init: {!}\n", .{e});
-            return null;
-        },
-        .preamp = PreAmp.init(params, allocator, num_channels) catch |e| {
-            std.log.err("PreAmp init: {!}\n", .{e});
-            return null;
-        },
-        .tone_stack = ToneStack.init(params, allocator, num_channels) catch |e| {
-            std.log.err("ToneStack init: {!}\n", .{e});
-            return null;
-        },
-        .poweramp = PowerAmp.init(params, allocator, num_channels) catch |e| {
-            std.log.err("PowerAmp init: {!}\n", .{e});
-            return null;
-        },
-    };
-    return proc;
 }
 
-export fn processor_deinit(p: ?*Processor) void {
+export fn processor_deinit(p: ?*MainProcessor) void {
     if (p) |proc| {
         proc.arena_impl.deinit();
     }
 }
 
 export fn processor_prepare(
-    p: ?*Processor,
+    p: ?*MainProcessor,
     sample_rate: f64,
     num_samples: u32,
     num_channels: u32,
 ) void {
     if (p) |proc| {
-        proc.prepare(sample_rate, num_samples, num_channels) catch |e| {
-            std.log.err("{!}\n", .{e});
-            return;
-        };
+        for (proc.procs.values) |amp| {
+            amp.prepare(amp, sample_rate, num_samples, num_channels);
+        }
     }
 }
 
-export fn processor_reset(p: ?*Processor) void {
+export fn processor_reset(p: ?*MainProcessor) void {
     if (p) |proc| {
-        proc.reset();
+        for (proc.procs.values) |amp| {
+            amp.reset(amp);
+        }
     }
 }
 
 export fn processor_process(
-    p: ?*Processor,
+    p: ?*MainProcessor,
     buffer: [*][*]f32,
     num_samples: u32,
     num_channels: u32,
@@ -229,7 +274,7 @@ export fn processor_process(
     }
 }
 
-export fn processor_param_change(p: ?*Processor, id: [*:0]const u8, val: f32) void {
+export fn processor_param_change(p: ?*MainProcessor, id: [*:0]const u8, val: f32) void {
     if (p) |proc| {
         proc.paramChange(std.mem.span(id), val);
     }
