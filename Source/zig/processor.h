@@ -2,7 +2,6 @@
 #define STR_X_H
 
 #include "stdint.h"
-#include "stdatomic.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
