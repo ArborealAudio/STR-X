@@ -13,7 +13,7 @@ else()
 	set(PRODUCTION_BUILD OFF)
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(STR-Z VERSION 0.1)
@@ -66,9 +66,6 @@ target_sources(${CMAKE_PROJECT_NAME}
 	PRIVATE
 		Source/PluginProcessor.cpp
 		Source/PluginEditor.cpp
-		Source/Background.hpp
-		Source/AmpComponent.hpp
-		Source/LookAndFeel.h
 )
 
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE modules/Arbor_modules)
@@ -86,9 +83,9 @@ if (UNIX AND NOT APPLE)
 endif()
 
 juce_add_binary_data(BinaryData SOURCES
-    "Resources/str-x.svg"
+    "Resources/str-x.png"
     "Resources/Menlo-Regular.ttf"
-    "Resources/logo.svg")
+    "Resources/logo.png")
 
 set_target_properties(BinaryData PROPERTIES
     POSITION_INDEPENDENT_CODE TRUE)

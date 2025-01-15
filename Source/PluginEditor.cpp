@@ -8,86 +8,81 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#define CLAY_IMPLEMENTATION
+#include "clay.h"
+
+void doLayout();
 
 //==============================================================================
 STRXAudioProcessorEditor::STRXAudioProcessorEditor (STRXAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor(p)
 {
-    tooltipWindow.setMillisecondsBeforeTipAppears(1000);
-
-    logo = Drawable::createFromImageData(BinaryData::logo_svg, BinaryData::logo_svgSize);
-
-    // channel = p.apvts.getRawParameterValue("channel");
-    // p.apvts.addParameterListener("channel", this);
-
-	// bool chan = (bool)*channel;
-
-    addAndMakeVisible(outVol);
-    outVol.setSliderStyle(Slider::LinearVertical);
-    outVol.setTextBoxStyle(Slider::TextBoxAbove, false, 80, 20);
-    outVol.setColour(Slider::backgroundColourId, Colour(GRAY));
-    outVol.setColour(Slider::thumbColourId, Colours::white);
-    // outVol.setColour(Slider::trackColourId, chan ? Colour(GREEN) : Colour(LIGHT_ACCENT));
-    outVol.setColour(Slider::textBoxOutlineColourId, Colours::transparentBlack);
-    outVol.setSliderSnapsToMousePosition(false);
-
-	// backgroundColor = chan ? Colours::black : Colours::grey;
-
-    hqButton.setButtonText("HQ");
-    hqButton.setClickingTogglesState(true);
-    hqButton.setRepaintsOnMouseActivity(true);
-    // hqButton.setLookAndFeel(&customLookAndFeel);
-    addAndMakeVisible(hqButton);
-    hqButton.setTooltip("Enables 4x oversampling with minimal latency");
-    
-    renderHQ.setButtonText("HQ Rendering");
-    renderHQ.setClickingTogglesState(true);
-    renderHQ.setRepaintsOnMouseActivity(true);
-    // renderHQ.setLookAndFeel(&customLookAndFeel);
-    addAndMakeVisible(renderHQ);
-    renderHQ.setTooltip("Enables 4x oversampling during rendering, using higher quality filters with fully linear phase");
-
-    addAndMakeVisible(stereo);
-    // stereo.lnf = &customLookAndFeel;
-
-    legacyTone.setButtonText("Use v1.0 tone controls");
-    legacyTone.setClickingTogglesState(true);
-    legacyTone.setRepaintsOnMouseActivity(true);
-    addAndMakeVisible(legacyTone);
-
+    Clay_SetMeasureTextFunction(measureText);
     setResizable(true, true);
-    getConstrainer()->setMinimumSize(500, 323);
-    getConstrainer()->setFixedAspectRatio(1.55);
-    setSize (p.lastUIWidth, p.lastUIHeight);
+    setSize(DEFAULT_GUI_WIDTH, DEFAULT_GUI_HEIGHT);
 }
 
 STRXAudioProcessorEditor::~STRXAudioProcessorEditor()
 {
-    // audioProcessor.apvts.removeParameterListener("channel", this);
-    hqButton.setLookAndFeel(nullptr);
-    renderHQ.setLookAndFeel(nullptr);
 }
 
 //==============================================================================
 void STRXAudioProcessorEditor::paint (Graphics& g)
 {
-	g.fillAll(backgroundColor);
-    float padding = getWidth() * 0.02f;
-    Rectangle<float> logoBounds(padding, padding, getWidth() * 0.075f, getWidth() * 0.075f);
-    logo->drawWithin(g, logoBounds, RectanglePlacement::centred, 1.f);
+    Clay_SetCurrentContext(clay_ctx.ctx);
+    Clay_BeginLayout();
+    doLayout();
+    Clay_RenderCommandArray cmds = Clay_EndLayout();
+    ClayJuceRender(g, cmds);
 }
 
 void STRXAudioProcessorEditor::resized()
 {
-    auto bounds = getLocalBounds().reduced(10);
-    const auto w = bounds.getWidth();
-    const auto h = bounds.getHeight();
+    Clay_SetLayoutDimensions({(float)getWidth(), (float)getHeight()});
+}
 
-    hqButton.setBounds(bounds.removeFromLeft(w * 0.1f));
-    renderHQ.setBounds(bounds.removeFromLeft(w * 0.15f));
-    stereo.setBounds(bounds.removeFromLeft(w * 0.15f));
-    legacyTone.setBounds(bounds.removeFromRight(w * 0.2f));
+void STRXAudioProcessorEditor::mouseDown(const MouseEvent &e)
+{}
 
-    audioProcessor.lastUIWidth = getWidth();
-    audioProcessor.lastUIHeight = getHeight();
+void STRXAudioProcessorEditor::mouseDrag(const MouseEvent &e)
+{}
+
+void STRXAudioProcessorEditor::mouseMove(const MouseEvent &e)
+{}
+
+void doLayout()
+{
+    Clay_Sizing layoutExpand = {
+        .width = CLAY_SIZING_GROW(),
+        .height = CLAY_SIZING_GROW(),
+    };
+    
+    CLAY(
+        CLAY_ID("Outer"),
+        CLAY_RECTANGLE({.color = {0xaa, 0xaa, 0xaa, 0xff}, .cornerRadius = {20.f}}),
+        CLAY_LAYOUT({
+            .sizing = layoutExpand,
+            .padding = CLAY_PADDING_ALL(50),
+            .layoutDirection = CLAY_LEFT_TO_RIGHT,
+        })
+    ) {
+        CLAY(
+            CLAY_ID("inner"),
+            CLAY_RECTANGLE({.color = {0, 0xff, 0, 0xff}}),
+            CLAY_LAYOUT({
+                .sizing = layoutExpand,
+                .padding = CLAY_PADDING_ALL(100),
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+            })
+        ) {
+            CLAY_TEXT(CLAY_STRING("I'M FARTING"), CLAY_TEXT_CONFIG({
+                                                       .textColor = {0xff,0,0,0xff},
+                                                       .fontSize = 20,
+                                                   }));
+            CLAY_TEXT(CLAY_STRING("Oh man, that was difficult"), CLAY_TEXT_CONFIG({
+                                                       .textColor = {0,0,0xff,0xff},
+                                                       .fontSize = 15,
+                                                   }));
+        }
+    }
 }

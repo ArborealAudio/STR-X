@@ -10,43 +10,33 @@
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
+#include "clay.h"
+#include "clay_juce_renderer.cpp"
 
-#define GREEN 0xff4e6f4e
-#define GRAY 0xff373c40
-#define BLUE_BG 0xff3b537a
-#define LIGHT_ACCENT 0xffdedece
+#define DEFAULT_GUI_WIDTH 900
+#define DEFAULT_GUI_HEIGHT 600
 
-struct StereoButton : TextButton
-{
-    StereoButton()
+static void handleClayError(Clay_ErrorData error) {
+    fprintf(stderr, "%s\n", error.errorText.chars);
+}
+
+struct Context {
+    Clay_Arena arena;
+    Clay_Context *ctx;
+
+    Context()
     {
-        setClickingTogglesState(true);
+        uint32 req_mem_size = 2 * Clay_MinMemorySize();
+        arena = Clay_CreateArenaWithCapacityAndMemory(req_mem_size, malloc(req_mem_size));
+        ctx = Clay_Initialize(arena, {
+                            .width = DEFAULT_GUI_WIDTH, .height = DEFAULT_GUI_HEIGHT,
+                        }, {handleClayError});
+        
     }
 
-    // CustomLookAndFeel *lnf;
-
-    void paint(Graphics &g) override
+    ~Context()
     {
-        auto bounds = getLocalBounds().reduced(5).toFloat();
-        if (isMouseOver())
-        {
-            // g.setColour(lnf->buttonOutline.darker(0.6f));
-            g.fillRoundedRectangle(bounds, 3.f);
-        }
-        // g.setColour(lnf->buttonOutline);
-        g.drawRoundedRectangle(bounds, 3.f, 2.f);
-
-        auto ellipseWidth = jmin(bounds.getHeight() * 0.75f, bounds.getWidth() * 0.75f);
-        // g.setColour(lnf->accentColor);
-        if (getToggleState())
-        {
-            g.drawEllipse(bounds.getCentreX() * 0.8f - (ellipseWidth / 2), bounds.getCentreY() - (ellipseWidth / 2), ellipseWidth, ellipseWidth, 3.f);
-            g.drawEllipse(bounds.getCentreX() * 1.2f - (ellipseWidth / 2), bounds.getCentreY() - (ellipseWidth / 2), ellipseWidth, ellipseWidth, 3.f);
-        }
-        else
-        {
-            g.drawEllipse(bounds.getCentreX() - (ellipseWidth / 2), bounds.getCentreY() - (ellipseWidth / 2), ellipseWidth, ellipseWidth, 3.f);
-        }
+        free(arena.memory);
     }
 };
 
@@ -54,8 +44,7 @@ struct StereoButton : TextButton
 /**
  */
 
-class STRXAudioProcessorEditor : public AudioProcessorEditor,
-                                 private AudioProcessorValueTreeState::Listener
+class STRXAudioProcessorEditor : public AudioProcessorEditor
 {
 public:
     STRXAudioProcessorEditor(STRXAudioProcessor &);
@@ -64,36 +53,14 @@ public:
     //==============================================================================
     void paint(Graphics &) override;
     void resized() override;
-
-    void parameterChanged(const String &parameterID, float newValue) override
-    {
-        if (parameterID == "channel")
-        {
-            outVol.setColour(outVol.trackColourId, (bool)newValue ? Colour(GREEN) : Colour(LIGHT_ACCENT));
-            backgroundColor = (bool)newValue ? Colours::black : Colours::grey;
-			repaint();
-        }
-    }
+    void mouseMove(const MouseEvent &e) override;
+    void mouseDown(const MouseEvent &e) override;
+    void mouseDrag(const MouseEvent &e) override;
 
 private:
-    std::atomic<float> *channel;
 
-    Slider outVol;
-    std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> outVolAttachment;
-
-    TextButton hqButton, renderHQ;
-    StereoButton stereo;
-    std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> hqButtonAttach, renderButtonAttach, stereoAttach;
-
-    ToggleButton legacyTone;
-    std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> legacyToneAttach;
-
-	Colour backgroundColor;
-
-    TooltipWindow tooltipWindow;
-
-    std::unique_ptr<Drawable> logo;
-
+    Context clay_ctx;
+    
     STRXAudioProcessor &audioProcessor;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(STRXAudioProcessorEditor)

@@ -193,8 +193,8 @@ bool STRXAudioProcessor::hasEditor() const
 
 AudioProcessorEditor *STRXAudioProcessor::createEditor()
 {
-    // return new STRXAudioProcessorEditor(*this);
-    return new GenericAudioProcessorEditor(*this);
+    return new STRXAudioProcessorEditor(*this);
+    // return new GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
@@ -245,6 +245,7 @@ AudioProcessorValueTreeState::ParameterLayout STRXAudioProcessor::createParamete
     params.push_back(std::make_unique<cParam>(ParameterID("amp", 1), "Amp", StringArray{
                                                   "STR_X",
                                                   "STR_Y",
+                                                  "STR_Z",
                                               }, 0));
     params.push_back(std::make_unique<fParam>(ParameterID("preamp_gain", 1), "Preamp Gain", gainRange, 3.f));
     params.push_back(std::make_unique<fParam>(ParameterID("low_gain", 1), "Low Gain", nRange, 5.f));
