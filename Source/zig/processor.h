@@ -16,6 +16,12 @@ void processor_process(Processor*, float* const* buffer, uint32_t num_samples, u
 void processor_process64(Processor*, double** buffer, uint32_t num_samples, uint32_t num_channels);
 void processor_param_change(Processor*, const char *id, float value);
 
+// TODO Other API ideas
+// save processor state
+// void processor_save_state(Processor *)
+// load processor state
+// void processor_load_state(Processor *)
+
 #ifdef __cplusplus
 }
 #endif

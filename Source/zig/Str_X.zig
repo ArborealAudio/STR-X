@@ -35,7 +35,6 @@ pub const StrX = struct {
         treble: f32 = 5,
         presence: f32 = 5,
         master_gain: f32 = 5,
-        out_vol: f32 = 0,
     };
 
     pub fn init(arena: Allocator, num_ch: u32) !*Processor {
@@ -102,13 +101,6 @@ pub const StrX = struct {
         self.preamp.process(buffer);
         self.tone_stack.process(buffer);
         self.poweramp.process(buffer);
-
-        const out_gain: f32 = math.pow(f32, 10.0, self.params.out_vol / 20);
-        for (buffer.data) |ch| {
-            for (ch) |*sample| {
-                sample.* = sample.* * out_gain;
-            }
-        }
     }
 
     fn paramChanged(p: *Processor, id: []const u8, val: f32) void {

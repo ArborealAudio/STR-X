@@ -11,6 +11,7 @@ const Allocator = std.mem.Allocator;
 
 const StrX = @import("Str_X.zig").StrX;
 const StrY = @import("Str_Y.zig").StrY;
+const StrZ = @import("Str_Z.zig");
 
 /// Base Processor interface
 pub const Processor = struct {
@@ -23,7 +24,7 @@ pub const Processor = struct {
 const AmpType = enum {
     StrX,
     StrY,
-    // StrZ,
+    StrZ,
 };
 
 // Parent struct for all possible processors, owning the arena so we can
@@ -33,6 +34,8 @@ const MainProcessor = struct {
 
     procs: ProcArray,
     active_proc: AmpType = .StrX,
+
+    out_vol: f32 = 0,
 
     arena_impl: *Arena,
     arena: Allocator,
@@ -45,6 +48,8 @@ const MainProcessor = struct {
         arena.* = Arena.init(std.heap.raw_c_allocator);
         const allocator = arena.allocator();
 
+        // TODO load plugin config from user config file
+
         const self = try allocator.create(MainProcessor);
         self.* = .{
             .arena_impl = arena,
@@ -52,6 +57,7 @@ const MainProcessor = struct {
             .procs = ProcArray.init(.{
                 .StrX = try StrX.init(allocator, num_ch),
                 .StrY = try StrY.init(allocator, num_ch),
+                .StrZ = try StrZ.init(allocator, num_ch),
             }),
             .max_frames = default_buffer_length,
         };
@@ -68,6 +74,8 @@ const MainProcessor = struct {
         // this fn?
         if (std.mem.eql(u8, id, "amp")) {
             self.active_proc = @enumFromInt(@as(u32, @intFromFloat(val)));
+        } else if (std.mem.eql(u8, id, "out_vol")) {
+            self.out_vol = val;
         } else {
             for (self.procs.values) |amp| {
                 amp.paramChanged(amp, id, val);
@@ -87,6 +95,9 @@ const MainProcessor = struct {
 
         const amp = self.getCurrentProc();
         amp.process(amp, buffer);
+
+        const out_vol_lin = math.pow(f32, 10.0, self.out_vol / 20.0);
+        buffer.applyGain(out_vol_lin);
     }
 };
 
