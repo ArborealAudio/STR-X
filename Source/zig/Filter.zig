@@ -18,6 +18,7 @@ pub const Type = enum {
     Lowpass,
     Highpass,
     Bandpass,
+    /// RBJ-style, cramps at Nyquist
     Peak,
     FirstOrderLowpass,
     FirstOrderHighpass,
@@ -231,7 +232,7 @@ pub fn process(self: *Filter, in: []const []const f32, out: []const []f32) void 
     }
 }
 
-pub fn processSample(self: *Filter, ch: usize, in: f32) f32 {
+pub inline fn processSample(self: *Filter, ch: usize, in: f32) f32 {
     std.debug.assert(ch < self.xn.len and ch < self.yn.len);
     const b = self.coeffs.b0 * in + self.coeffs.b1 * self.xn[ch][0] + self.coeffs.b2 * self.xn[ch][1];
     const a = -self.coeffs.a1 * self.yn[ch][0] - self.coeffs.a2 * self.yn[ch][1];

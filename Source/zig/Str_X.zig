@@ -9,6 +9,7 @@ const LRFilter = @import("LRFilter.zig");
 const util = @import("util.zig");
 const map = util.map;
 const AudioBuffer = util.AudioBuffer32;
+const AtomicFlag = util.AtomicFlag;
 
 const TSX = processor.TSX;
 
@@ -132,8 +133,6 @@ pub const StrX = struct {
             }
         }
     }
-
-    const AtomicFlag = std.atomic.Value(bool);
 
     proc: Processor,
 

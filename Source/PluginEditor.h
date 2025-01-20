@@ -10,11 +10,11 @@
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
+#include "AmpComponent.hpp"
+#include "PedalComponent.hpp"
 
-#define GREEN 0xff4e6f4e
-#define GRAY 0xff373c40
-#define BLUE_BG 0xff3b537a
-#define LIGHT_ACCENT 0xffdedece
+#define DEFAULT_GUI_WIDTH 900
+#define DEFAULT_GUI_HEIGHT 750
 
 struct StereoButton : TextButton
 {
@@ -54,8 +54,7 @@ struct StereoButton : TextButton
 /**
  */
 
-class STRXAudioProcessorEditor : public AudioProcessorEditor,
-                                 private AudioProcessorValueTreeState::Listener
+class STRXAudioProcessorEditor : public AudioProcessorEditor
 {
 public:
     STRXAudioProcessorEditor(STRXAudioProcessor &);
@@ -65,30 +64,20 @@ public:
     void paint(Graphics &) override;
     void resized() override;
 
-    void parameterChanged(const String &parameterID, float newValue) override
-    {
-        if (parameterID == "channel")
-        {
-            outVol.setColour(outVol.trackColourId, (bool)newValue ? Colour(GREEN) : Colour(LIGHT_ACCENT));
-            backgroundColor = (bool)newValue ? Colours::black : Colours::grey;
-			repaint();
-        }
-    }
-
 private:
-    std::atomic<float> *channel;
+    using Apvts = AudioProcessorValueTreeState;
+
+    MainComponent main_comp;
+    TSXPedalComponent tsx;
+    AmpModeMenu pedal_type;
+    std::unique_ptr<Apvts::ComboBoxAttachment> pedal_type_attach;
 
     Slider outVol;
-    std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> outVolAttachment;
+    std::unique_ptr<Apvts::SliderAttachment> outVolAttachment;
 
     TextButton hqButton, renderHQ;
     StereoButton stereo;
-    std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> hqButtonAttach, renderButtonAttach, stereoAttach;
-
-    ToggleButton legacyTone;
-    std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> legacyToneAttach;
-
-	Colour backgroundColor;
+    std::unique_ptr<Apvts::ButtonAttachment> hqButtonAttach, renderButtonAttach, stereoAttach;
 
     TooltipWindow tooltipWindow;
 

@@ -2,64 +2,92 @@
 
 #pragma once
 
-struct AmpComponent : Component
+#include <JuceHeader.h>
+#include "LookAndFeel.h"
+#include "zig/processor.h"
+
+struct StrXComponent : Component,
+    private AudioProcessorValueTreeState::Listener
 {
-    AmpComponent(AudioProcessorValueTreeState &vts, CustomLookAndFeel *lnf_) : apvts(vts), lnf(lnf_),
-                                                                               channel(static_cast<strix::ChoiceParameter *>(vts.getParameter("channel")))
+    enum KnobList {
+        Preamp,
+        Bass,
+        Mid,
+        Treble,
+        Presence,
+        Master,
+        NumKnobs,
+    };
+
+    const char* str_x_knobs[NumKnobs] = {
+        "Preamp",
+        "Bass",
+        "Mid",
+        "Treble",
+        "Presence",
+        "Master"
+    };
+
+    StrXComponent(AudioProcessorValueTreeState &apvts) : apvts(apvts),
+        amp_mode({"THICK", "NORMAL", "OPEN"}, 1)
     {
-        for (auto *k : getKnobs())
-        {
-            k->setSliderStyle(Slider::SliderStyle::RotaryVerticalDrag);
-            k->setLookAndFeel(lnf);
-            k->setTextBoxStyle(Slider::NoTextBox, true, 0, 0);
-            addAndMakeVisible(*k);
-        }
+        for (auto &k : knobs)
+            addAndMakeVisible(k);
 
-        ts9Gain.label = "X";
-        inputGain.label = "GAIN";
-        bass.label = "BASS";
-        mid.label = "MID";
-        treble.label = "TREBLE";
-        presence.label = "PRESENCE";
-        outGain.label = "POWER AMP";
+        addAndMakeVisible(on);
+        on.setClickingTogglesState(true);
+        addAndMakeVisible(gain_ch);
+        addAndMakeVisible(bright);
 
-        addAndMakeVisible(brightButton);
-        brightButton.setButtonText("BRIGHT");
-        brightButton.setLookAndFeel(lnf);
-        brightButton.setClickingTogglesState(true);
+        amp_mode.setTooltip("Switches the voicing of the preamp\n\nThick = Split @ 100Hz\nNormal = Split @ 250Hz\nOpen = Split @ 400Hz");
+        addAndMakeVisible(amp_mode);
 
-        addAndMakeVisible(channelButton);
-        channelButton.setButtonText("HI GAIN");
-        channelButton.setLookAndFeel(lnf);
-        channelButton.setClickingTogglesState(true);
+        using Sa = AudioProcessorValueTreeState::SliderAttachment;
+        knob_attachments.preamp = std::make_unique<Sa>(apvts, "preamp_gain", knobs[Preamp]);
+        knob_attachments.bass = std::make_unique<Sa>(apvts, "bass", knobs[Bass]);
+        knob_attachments.mid = std::make_unique<Sa>(apvts, "mid", knobs[Mid]);
+        knob_attachments.treble = std::make_unique<Sa>(apvts, "treble", knobs[Treble]);
+        knob_attachments.presence = std::make_unique<Sa>(apvts, "presence", knobs[Presence]);
+        knob_attachments.master = std::make_unique<Sa>(apvts, "master_gain", knobs[Master]);
 
-        StringArray modes{"THICK", "NORMAL", "OPEN"};
-        mode.addItemList(modes, 1);
-        mode.setSelectedItemIndex(1);
-        mode.setLookAndFeel(lnf);
-        mode.setTooltip("Switches the voicing of the preamp\n\nThick = Split @ 100Hz\nNormal = Split @ 250Hz\nOpen = Split @ 400Hz");
-        addAndMakeVisible(mode);
+        on_attach = std::make_unique<
+            AudioProcessorValueTreeState::ButtonAttachment>(apvts, "amp_on", on);
+        gain_ch_attach = std::make_unique<
+            AudioProcessorValueTreeState::ButtonAttachment>(apvts, "gain_ch", gain_ch);
+        bright_attach = std::make_unique<
+            AudioProcessorValueTreeState::ButtonAttachment>(apvts, "bright", bright);
+        amp_mode_attach = std::make_unique<
+            AudioProcessorValueTreeState::ComboBoxAttachment>(apvts, "amp_mode", amp_mode);
 
-        inputGainAttach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts, "gain", inputGain);
-        ts9Attach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts, "tsXgain", ts9Gain);
-        modeAttach = std::make_unique<AudioProcessorValueTreeState::ComboBoxAttachment>(apvts, "mode", mode);
-        bassAttach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts, "bass", bass);
-        midAttach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts, "mid", mid);
-        trebleAttach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts, "treble", treble);
-        presenceAttach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts, "presence", presence);
-        brightAttach = std::make_unique<AudioProcessorValueTreeState::ButtonAttachment>(apvts, "bright", brightButton);
-        channelAttach = std::make_unique<AudioProcessorValueTreeState::ButtonAttachment>(apvts, "channel", channelButton);
-        outGainAttach = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(apvts, "master", outGain);
+        // set component themes based on channel value
+        GainChannel cur_ch = (GainChannel)(int)apvts.getParameterAsValue("gain_ch").getValue();
+        setTheme(cur_ch);
+
+        apvts.addParameterListener("gain_ch", this);
     }
 
-    ~AmpComponent()
+    ~StrXComponent()
     {
-        for (auto *k : getKnobs())
-            k->setLookAndFeel(nullptr);
-        brightButton.setLookAndFeel(nullptr);
-        channelButton.setLookAndFeel(nullptr);
-        mode.setLookAndFeel(nullptr);
-        channel = nullptr;
+        apvts.removeParameterListener("gain_ch", this);
+    }
+
+    void parameterChanged(const String &id, float value) override
+    {
+        if (strcmp(id.toRawUTF8(), "gain_ch") == 0) {
+            setTheme((GainChannel)value);
+            repaint();
+        }
+    }
+
+    void setTheme(GainChannel cur_ch)
+    {
+        const Theme new_theme = cur_ch == HiGainChannel ? str_x_higain_theme : str_x_lowgain_theme;
+        for (auto &k : knobs) {
+            k.lnf.theme = new_theme;
+        }
+        gain_ch.lnf.theme = new_theme;
+        amp_mode.lnf.theme = new_theme;
+        theme = new_theme;
     }
 
     void paint(Graphics &g) override
@@ -68,12 +96,10 @@ struct AmpComponent : Component
         auto w = bounds.getWidth();
         auto h = bounds.getHeight();
 
-        const int ch_ = *channel;
-
-        g.setColour(ch_ ? Colours::black : Colour(BLUE_BG));
+        g.setColour(theme.main);
         g.fillRoundedRectangle(bounds.toFloat(), 10.f);
 
-        g.setColour(ch_ ? Colours::whitesmoke : Colour(LIGHT_ACCENT));
+        g.setColour(theme.accent);
 
         Path ltr;
         ltr.startNewSubPath(bounds.getX() + 8, bounds.getY() + 5);
@@ -86,61 +112,84 @@ struct AmpComponent : Component
         g.strokePath(ltr, PathStrokeType(4.f, PathStrokeType::JointStyle::curved, PathStrokeType::EndCapStyle::rounded));
         g.strokePath(rtl, PathStrokeType(4.f, PathStrokeType::JointStyle::curved, PathStrokeType::EndCapStyle::rounded));
 
-        g.setColour(ch_ ? Colour(GREEN) : Colour(LIGHT_ACCENT));
+        g.setColour(theme.accent);
         g.drawRoundedRectangle(bounds.toFloat(), 10.f, 5.f);
 
-        mode.setColour(ComboBox::ColourIds::textColourId, Colours::white);
+        amp_mode.setColour(ComboBox::ColourIds::textColourId, Colours::white);
     }
 
     void resized() override
     {
-        auto b = getLocalBounds().reduced(15);
-        auto controls = b.removeFromBottom(b.getHeight() / 2);
-        auto w = controls.getWidth();
-        auto h = controls.getHeight();
-        auto chunk = w / 7;
+        auto b = getLocalBounds();
+        const int h = b.getHeight();
+        const int w = b.getWidth();
+        auto knob_bounds = b.removeFromBottom((float)h * 0.66f);
 
-        for (auto &k : getKnobs())
-            k->setBounds(controls.removeFromLeft(chunk).reduced(chunk * 0.1f));
+        gain_ch.setBounds(b.removeFromLeft(w / 4).reduced(10));
+        amp_mode.setBounds(b.removeFromLeft(w / 4).reduced(10));
+        bright.setBounds(b.removeFromLeft(w / 4).reduced(10));
+        on.setBounds(b.removeFromLeft(w / 4).reduced(10));
+        
+        const int div = w / (sizeof(knobs) / sizeof(knobs[0]));
+        for (auto &k : knobs) {
+            k.setBounds(knob_bounds.removeFromLeft(div));
+        }
+    }
 
-        auto offset = getHeight() * 0.1f;
+private:
 
-        mode.setSize(jmax(100.f, w * 0.15f), jmax(35.f, h * 0.3f));
-        mode.setCentrePosition(b.getCentreX(), b.getCentreY() + offset);
+    using Apvts = AudioProcessorValueTreeState;
 
-        auto rightThird = b.removeFromRight(w / 3);
-        brightButton.setSize(jmax(100.f, w * 0.1f), jmax(35.f, h * 0.3f));
-        brightButton.setCentrePosition(rightThird.getCentreX(), rightThird.getCentreY() + offset);
+    Apvts &apvts;
 
-        auto leftThird = b.removeFromLeft(w / 3);
-        channelButton.setSize(jmax(100.f, w * 0.1f), jmax(35.f, h * 0.3f));
-        channelButton.setCentrePosition(leftThird.getCentreX(), leftThird.getCentreY() + offset);
+    Theme theme = str_x_higain_theme;
+    
+    AmpKnob knobs[NumKnobs] = {
+        {str_x_knobs[Preamp]},
+        {str_x_knobs[Bass]},
+        {str_x_knobs[Mid]},
+        {str_x_knobs[Treble]},
+        {str_x_knobs[Presence]},
+        {str_x_knobs[Master]},
+    };
+
+    struct {
+        std::unique_ptr<Apvts::SliderAttachment> preamp;
+        std::unique_ptr<Apvts::SliderAttachment> bass;
+        std::unique_ptr<Apvts::SliderAttachment> mid;
+        std::unique_ptr<Apvts::SliderAttachment> treble;
+        std::unique_ptr<Apvts::SliderAttachment> presence;
+        std::unique_ptr<Apvts::SliderAttachment> master;
+    } knob_attachments;
+
+    AmpModeMenu amp_mode; 
+    GainChButton gain_ch;
+    TextButton bright{"Bright"};
+    TextButton on{"On"};
+
+    std::unique_ptr<Apvts::ComboBoxAttachment> amp_mode_attach;
+    std::unique_ptr<Apvts::ButtonAttachment> gain_ch_attach, bright_attach, on_attach;
+};
+
+struct MainComponent : Component
+{
+    MainComponent(AudioProcessorValueTreeState &vts) : apvts(vts), str_x(vts)
+    {
+        addAndMakeVisible(str_x);
+    }
+
+    ~MainComponent()
+    {
+    }
+
+    void resized() override
+    {
+        str_x.setBounds(getLocalBounds());
     }
 
 private:
     AudioProcessorValueTreeState &apvts;
-    CustomLookAndFeel *lnf;
 
-    AmpKnob ts9Gain, inputGain, bass, mid, treble, presence, outGain;
-    std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment> ts9Attach, inputGainAttach, bassAttach, midAttach, trebleAttach, presenceAttach, outGainAttach;
+    StrXComponent str_x;
 
-    ComboBox mode;
-    std::unique_ptr<AudioProcessorValueTreeState::ComboBoxAttachment> modeAttach;
-
-    TextButton brightButton, channelButton;
-    std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> brightAttach, channelAttach;
-
-    strix::ChoiceParameter *channel = nullptr;
-
-    std::vector<Slider *> getKnobs()
-    {
-        return {
-            &ts9Gain,
-            &inputGain,
-            &bass,
-            &mid,
-            &treble,
-            &presence,
-            &outGain};
-    }
 };

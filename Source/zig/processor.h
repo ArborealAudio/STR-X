@@ -1,10 +1,15 @@
-#ifndef STR_X_H
-#define STR_X_H
+#ifndef PROCESSOR_H
+#define PROCESSOR_H
 
 #include "stdint.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+enum GainChannel {
+    LowGainChannel,
+    HiGainChannel,
+};
 
 typedef struct Processor Processor;
 

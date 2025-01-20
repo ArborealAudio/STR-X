@@ -30,11 +30,16 @@ STRXAudioProcessor::STRXAudioProcessor()
 
     proc = processor_init(getTotalNumInputChannels());
     assert(proc);
-    apvts.addParameterListener("amp", this);
+    apvts.addParameterListener("amp_on", this);
+    apvts.addParameterListener("amp_type", this);
     apvts.addParameterListener("amp_mode", this);
     apvts.addParameterListener("gain_ch", this);
     apvts.addParameterListener("bright", this);
+    apvts.addParameterListener("pedal_on", this);
+    apvts.addParameterListener("pedal_type", this);
     apvts.addParameterListener("pedal_gain", this);
+    apvts.addParameterListener("pedal_tone", this);
+    apvts.addParameterListener("pedal_output", this);
     apvts.addParameterListener("preamp_gain", this);
     apvts.addParameterListener("low_gain", this);
     apvts.addParameterListener("hi_gain", this);
@@ -48,10 +53,16 @@ STRXAudioProcessor::STRXAudioProcessor()
 
 STRXAudioProcessor::~STRXAudioProcessor()
 {
+    apvts.removeParameterListener("amp_on", this);
+    apvts.removeParameterListener("amp_type", this);
     apvts.removeParameterListener("amp_mode", this);
     apvts.removeParameterListener("gain_ch", this);
     apvts.removeParameterListener("bright", this);
+    apvts.removeParameterListener("pedal_on", this);
+    apvts.removeParameterListener("pedal_type", this);
     apvts.removeParameterListener("pedal_gain", this);
+    apvts.removeParameterListener("pedal_tone", this);
+    apvts.removeParameterListener("pedal_output", this);
     apvts.removeParameterListener("preamp_gain", this);
     apvts.removeParameterListener("low_gain", this);
     apvts.removeParameterListener("hi_gain", this);
@@ -193,8 +204,8 @@ bool STRXAudioProcessor::hasEditor() const
 
 AudioProcessorEditor *STRXAudioProcessor::createEditor()
 {
-    // return new STRXAudioProcessorEditor(*this);
-    return new GenericAudioProcessorEditor(*this);
+    return new STRXAudioProcessorEditor(*this);
+    // return new GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
@@ -242,9 +253,11 @@ AudioProcessorValueTreeState::ParameterLayout STRXAudioProcessor::createParamete
     using bParam = strix::BoolParameter;
     using cParam = strix::ChoiceParameter;
 
-    params.push_back(std::make_unique<cParam>(ParameterID("amp", 1), "Amp", StringArray{
+    params.push_back(std::make_unique<bParam>(ParameterID("amp_on", 1), "Amp On", true));
+    params.push_back(std::make_unique<cParam>(ParameterID("amp_type", 1), "Amp", StringArray{
                                                   "STR_X",
                                                   "STR_Y",
+                                                  "STR_Z",
                                               }, 0));
     params.push_back(std::make_unique<fParam>(ParameterID("preamp_gain", 1), "Preamp Gain", gainRange, 3.f));
     params.push_back(std::make_unique<fParam>(ParameterID("low_gain", 1), "Low Gain", nRange, 5.f));
@@ -256,8 +269,13 @@ AudioProcessorValueTreeState::ParameterLayout STRXAudioProcessor::createParamete
     params.push_back(std::make_unique<fParam>(ParameterID("treble", 1), "Treble", nRange, 5.f));
     params.push_back(std::make_unique<fParam>(ParameterID("presence", 1), "Presence", nRange, 5.f));
     params.push_back(std::make_unique<bParam>(ParameterID("bright", 1), "Bright", false));
+    params.push_back(std::make_unique<bParam>(ParameterID("pedal_on", 1), "Pedal On", false));
+    params.push_back(std::make_unique<cParam>(ParameterID("pedal_type", 1), "Pedal",
+                                                  StringArray{"TSX", "RXT"}, 0));
     params.push_back(std::make_unique<fParam>(ParameterID("pedal_gain", 1), "Pedal Gain", 0.f, 10.0f, 0.f));
-    params.push_back(std::make_unique<fParam>(ParameterID("master_gain", 1), "Power Amp Gain", gainRange, 5.f));
+    params.push_back(std::make_unique<fParam>(ParameterID("pedal_tone", 1), "Pedal Tone", 0.f, 10.0f, 0.f));
+    params.push_back(std::make_unique<fParam>(ParameterID("pedal_output", 1), "Pedal Output", 0.f, 10.0f, 5.f));
+    params.push_back(std::make_unique<fParam>(ParameterID("master_gain", 1), "Master Gain", gainRange, 5.f));
     params.push_back(std::make_unique<cParam>(ParameterID("gain_ch", 1), "Channel",
                                               StringArray{"Lo", "Hi"}, 1));
     params.push_back(std::make_unique<fParam>(ParameterID("out_vol", 1), "Output Volume", outVolRange, 0.0));

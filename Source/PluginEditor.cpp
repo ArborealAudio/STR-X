@@ -10,60 +10,49 @@
 #include "PluginEditor.h"
 
 //==============================================================================
-STRXAudioProcessorEditor::STRXAudioProcessorEditor (STRXAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor(p)
+STRXAudioProcessorEditor::STRXAudioProcessorEditor(STRXAudioProcessor &p)
+    : AudioProcessorEditor(&p), audioProcessor(p), main_comp(p.apvts),
+      tsx(p.apvts), pedal_type({"TSX", "RXT"}, 0)
 {
     tooltipWindow.setMillisecondsBeforeTipAppears(1000);
 
     logo = Drawable::createFromImageData(BinaryData::logo_svg, BinaryData::logo_svgSize);
 
-    // channel = p.apvts.getRawParameterValue("channel");
-    // p.apvts.addParameterListener("channel", this);
-
-	// bool chan = (bool)*channel;
+    addAndMakeVisible(main_comp);
+    addAndMakeVisible(tsx);
+    addAndMakeVisible(pedal_type);
+    pedal_type_attach = std::make_unique<Apvts::ComboBoxAttachment>(p.apvts, "pedal_type", pedal_type);
 
     addAndMakeVisible(outVol);
     outVol.setSliderStyle(Slider::LinearVertical);
     outVol.setTextBoxStyle(Slider::TextBoxAbove, false, 80, 20);
     outVol.setColour(Slider::backgroundColourId, Colour(GRAY));
     outVol.setColour(Slider::thumbColourId, Colours::white);
-    // outVol.setColour(Slider::trackColourId, chan ? Colour(GREEN) : Colour(LIGHT_ACCENT));
+    outVol.setColour(Slider::trackColourId, Colours::whitesmoke);
     outVol.setColour(Slider::textBoxOutlineColourId, Colours::transparentBlack);
     outVol.setSliderSnapsToMousePosition(false);
-
-	// backgroundColor = chan ? Colours::black : Colours::grey;
 
     hqButton.setButtonText("HQ");
     hqButton.setClickingTogglesState(true);
     hqButton.setRepaintsOnMouseActivity(true);
-    // hqButton.setLookAndFeel(&customLookAndFeel);
     addAndMakeVisible(hqButton);
     hqButton.setTooltip("Enables 4x oversampling with minimal latency");
     
     renderHQ.setButtonText("HQ Rendering");
     renderHQ.setClickingTogglesState(true);
     renderHQ.setRepaintsOnMouseActivity(true);
-    // renderHQ.setLookAndFeel(&customLookAndFeel);
     addAndMakeVisible(renderHQ);
     renderHQ.setTooltip("Enables 4x oversampling during rendering, using higher quality filters with fully linear phase");
 
     addAndMakeVisible(stereo);
-    // stereo.lnf = &customLookAndFeel;
-
-    legacyTone.setButtonText("Use v1.0 tone controls");
-    legacyTone.setClickingTogglesState(true);
-    legacyTone.setRepaintsOnMouseActivity(true);
-    addAndMakeVisible(legacyTone);
 
     setResizable(true, true);
-    getConstrainer()->setMinimumSize(500, 323);
-    getConstrainer()->setFixedAspectRatio(1.55);
-    setSize (p.lastUIWidth, p.lastUIHeight);
+    getConstrainer()->setFixedAspectRatio((float)DEFAULT_GUI_WIDTH / DEFAULT_GUI_HEIGHT);
+    setSize (DEFAULT_GUI_WIDTH, DEFAULT_GUI_HEIGHT);
 }
 
 STRXAudioProcessorEditor::~STRXAudioProcessorEditor()
 {
-    // audioProcessor.apvts.removeParameterListener("channel", this);
     hqButton.setLookAndFeel(nullptr);
     renderHQ.setLookAndFeel(nullptr);
 }
@@ -71,7 +60,7 @@ STRXAudioProcessorEditor::~STRXAudioProcessorEditor()
 //==============================================================================
 void STRXAudioProcessorEditor::paint (Graphics& g)
 {
-	g.fillAll(backgroundColor);
+	g.fillAll(Colours::darkgrey.darker());
     float padding = getWidth() * 0.02f;
     Rectangle<float> logoBounds(padding, padding, getWidth() * 0.075f, getWidth() * 0.075f);
     logo->drawWithin(g, logoBounds, RectanglePlacement::centred, 1.f);
@@ -80,13 +69,19 @@ void STRXAudioProcessorEditor::paint (Graphics& g)
 void STRXAudioProcessorEditor::resized()
 {
     auto bounds = getLocalBounds().reduced(10);
-    const auto w = bounds.getWidth();
-    const auto h = bounds.getHeight();
+    const int w = bounds.getWidth();
+    const int h = bounds.getHeight();
+
+    auto pedal_bounds = bounds.removeFromTop((float)h * 0.2f).withWidth(w / 4).withX((float)w * 0.1f);
+    tsx.setBounds(pedal_bounds);
+    pedal_type.setBounds(pedal_bounds.withX(pedal_bounds.getRight()));
+
+    auto main_bounds = bounds.removeFromTop((float)h * 0.85f);
+    main_comp.setBounds(main_bounds);
 
     hqButton.setBounds(bounds.removeFromLeft(w * 0.1f));
     renderHQ.setBounds(bounds.removeFromLeft(w * 0.15f));
     stereo.setBounds(bounds.removeFromLeft(w * 0.15f));
-    legacyTone.setBounds(bounds.removeFromRight(w * 0.2f));
 
     audioProcessor.lastUIWidth = getWidth();
     audioProcessor.lastUIHeight = getHeight();

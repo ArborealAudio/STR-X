@@ -1,4 +1,5 @@
 const std = @import("std");
+const math = std.math;
 
 pub const AudioBuffer32 = struct {
     num_channels: u32,
@@ -36,7 +37,15 @@ pub const AudioBufferVector = struct {
     data: []DoubleVec,
 };
 
+pub const AtomicFlag = std.atomic.Value(bool);
+
 // map normalized float to new range
 pub fn map(comptime T: type, x: T, min: T, max: T) T {
     return (x * (max - min)) + min;
+}
+
+pub fn mapLog10(comptime T: type, x: T, min: T, max: T) T {
+    const log_min: T = @log10(min);
+    const log_max: T = @log10(max);
+    return math.pow(T, 10, x * (log_max - log_min) + log_min);
 }

@@ -26,7 +26,7 @@ add_custom_command(OUTPUT ${LIB_ARTIFACT}
   VERBATIM
   COMMAND zig ARGS build -Doptimize=Debug -Dtarget=${LIB_TARGET}
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  DEPENDS processor.zig util.zig build.zig Str_X.zig Str_Y.zig Str_Z.zig
+  DEPENDS processor.zig util.zig build.zig Str_X.zig Str_Y.zig Str_Z.zig pedals.zig
 )
 
 add_custom_target(processor_build DEPENDS ${LIB_ARTIFACT})
