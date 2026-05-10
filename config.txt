@@ -1,0 +1,65 @@
+PreampGain {
+    type Float
+    min 0
+    max 10
+    default 3
+}
+
+Bass {
+    type Float
+    min 0
+    max 10
+    default 5
+}
+
+Mid {
+    type Float
+    min 0
+    max 10
+    default 5
+}
+
+Treble {
+    type Float
+    min 0
+    max 10
+    default 5
+}
+
+Presence {
+    type Float
+    min 0
+    max 10
+    default 5
+}
+
+Bright {
+    type Bool
+    default false
+}
+
+MasterGain {
+    type Float
+    min 0
+    max 10
+    default 5
+}
+
+GainChannel {
+    type Choice
+    choices [
+        Low
+        High
+    ]
+    default High
+}
+
+AmpMode {
+    type Choice
+    choices [
+        I
+        II
+        III
+    ]
+    default II
+}

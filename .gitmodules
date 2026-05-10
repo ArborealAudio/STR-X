@@ -7,3 +7,7 @@
 [submodule "modules/Arbor_modules"]
 	path = modules/Arbor_modules
 	url = https://github.com/ArborealAudio/Arbor_modules.git
+[submodule "arbor"]
+	path = arbor
+	url = git@aa.github.com:ArborealAudio/arbor.git
+	branch = arbor-c
