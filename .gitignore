@@ -1,7 +1,5 @@
 **/.DS_Store
-.cache/
-build/
-build32/
+.build/
 .vscode/
-**/.zig-cache/
-**/zig-out/
+.zed/
+builder

@@ -36,7 +36,7 @@ static void str_x_init(STR_X *amp, Plugin *plugin) {
     *amp = (STR_X){
         .plugin = plugin,
         .preamp_hpf = (IIR_Filter){.type = IIR_Filter_Highpass, .cutoff = 65, .reso = SQRT1_2},
-        .preamp_dc = (IIR_Filter){.type = IIR_Filter_Highpass, .cutoff = 10, .reso = SQRT1_2},
+        .preamp_dc = (IIR_Filter){.type = IIR_Filter_FirstOrderHighpass, .cutoff = 10},
         .preamp_lowshelf = (IIR_Filter){
             .type = IIR_Filter_FirstOrderLowshelf,
             .cutoff = 185, .reso = 1.8, .gain = 0.5,
@@ -49,10 +49,13 @@ static void str_x_init(STR_X *amp, Plugin *plugin) {
         .ts_mid = (IIR_Filter){.type = IIR_Filter_Peak, .cutoff = 600, .reso = 0.5f, .gain = 1},
         .ts_treb = (IIR_Filter){.type = IIR_Filter_FirstOrderHighshelf, .cutoff = 1500, .reso = 0.3f, .gain = 1},
         .ts_presence = (IIR_Filter){.type = IIR_Filter_Peak, .cutoff = 4000, .reso = 0.6f, .gain = 1},
-        .ts_bright = (IIR_Filter){.type = IIR_Filter_FirstOrderHighshelf, .cutoff = 2500, .reso = SQRT1_2, .gain = db2lin(12)},
+        .ts_bright = (IIR_Filter){
+            .type = IIR_Filter_FirstOrderHighshelf,
+            .cutoff = 2500, .reso = SQRT1_2, .gain = db2lin(12)
+        },
         .poweramp_dc = {
-            [0] = (IIR_Filter){.type = IIR_Filter_Highpass, .cutoff = 10, .reso = SQRT1_2},
-            [1] = (IIR_Filter){.type = IIR_Filter_Highpass, .cutoff = 10, .reso = SQRT1_2},
+            [0] = (IIR_Filter){.type = IIR_Filter_FirstOrderHighpass, .cutoff = 10, .reso = SQRT1_2},
+            [1] = (IIR_Filter){.type = IIR_Filter_FirstOrderHighpass, .cutoff = 10, .reso = SQRT1_2},
         },
     };
 
@@ -225,20 +228,18 @@ static void str_x_process(STR_X *amp, const f32 *in, f32 *out, u32 num_frames) {
         str_x_mode_update(amp, amp_mode);
 
     // Preamp
-    // if (gain_ch == High) {
-    //     str_x_process_preamp_hi(amp, in, out, num_frames);
-    // } else {
-    //     str_x_process_preamp_low(amp, in, out, num_frames);
-    // }
+    if (gain_ch == High) {
+        str_x_process_preamp_hi(amp, in, out, num_frames);
+    } else {
+        str_x_process_preamp_low(amp, in, out, num_frames);
+    }
     // Tone stack
-    // ISSUE I thought I solved the excessive bassiness but i actually failed to capture the output
-    // of the tonestack filters. The issue persists
     for (u32 i = 0; i < num_frames; ++i) {
         f64 y = out[i];
-        // y = filter_process_sample(&amp->ts_lpf, y);
-        // f64 yhp = filter_process_sample(&amp->ts_hpf, y);
-        // f64 ybp = filter_process_sample(&amp->ts_bpf, y);
-        // y = yhp + ybp;
+        y = filter_process_sample(&amp->ts_lpf, y);
+        f64 yhp = filter_process_sample(&amp->ts_hpf, y);
+        f64 ybp = filter_process_sample(&amp->ts_bpf, y);
+        y = yhp + ybp;
         y = filter_process_sample(&amp->ts_bass, y);
         y = filter_process_sample(&amp->ts_mid, y);
         y = filter_process_sample(&amp->ts_treb, y);
@@ -249,9 +250,9 @@ static void str_x_process(STR_X *amp, const f32 *in, f32 *out, u32 num_frames) {
         filter_process(&amp->ts_bright, out, out, num_frames);
     }
     // Poweramp
-    // if (gain_ch == High) {
-    //     str_x_process_poweramp_hi(amp, out, out, num_frames);
-    // } else {
-    //     str_x_process_poweramp_low(amp, out, out, num_frames);
-    // }
+    if (gain_ch == High) {
+        str_x_process_poweramp_hi(amp, out, out, num_frames);
+    } else {
+        str_x_process_poweramp_low(amp, out, out, num_frames);
+    }
 }
