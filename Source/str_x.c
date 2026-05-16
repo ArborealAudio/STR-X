@@ -4,6 +4,8 @@ static const f32 lr_cutoffs[] = { 100, 250, 400, };
 // Processing state for STR_X mode. Mono-only
 typedef struct {
     Plugin *plugin;
+    // Which channel are we?
+    u32 ch_idx;
     // preamp filters
     IIR_Filter preamp_hpf;
     IIR_Filter preamp_dc;
@@ -32,9 +34,10 @@ typedef struct {
 static void str_x_tonestack_update(STR_X *amp, const ParameterData *params);
 
 // Initialize filter state
-static void str_x_init(STR_X *amp, Plugin *plugin) {
+static void str_x_init(STR_X *amp, Plugin *plugin, u32 ch_idx) {
     *amp = (STR_X){
         .plugin = plugin,
+        .ch_idx = ch_idx,
         .preamp_hpf = (IIR_Filter){.type = IIR_Filter_Highpass, .cutoff = 65, .reso = SQRT1_2},
         .preamp_dc = (IIR_Filter){.type = IIR_Filter_FirstOrderHighpass, .cutoff = 10},
         .preamp_lowshelf = (IIR_Filter){
@@ -137,7 +140,7 @@ static f64 str_x_preamp_saturate_low(f64 x) {
 
 static void str_x_process_preamp_hi(STR_X *amp, const f32 *in, f32 *out, u32 num_frames) {
     for (u32 i = 0; i < num_frames; ++i) {
-        const f32 gain = get_parameter_smoothed(amp->plugin, Param_PreampGain) * 2.667f;
+        const f32 gain = get_parameter_smoothed(amp->plugin, Param_PreampGain, amp->ch_idx) * 2.667f;
         const f32 x = in[i];
         f32 y = x * gain;
         f64 yl, yh;
@@ -158,7 +161,7 @@ static void str_x_process_preamp_hi(STR_X *amp, const f32 *in, f32 *out, u32 num
 
 static void str_x_process_preamp_low(STR_X *amp, const f32 *in, f32 *out, u32 num_frames) {
     for (u32 i = 0; i < num_frames; ++i) {
-        const f64 gain = get_parameter_smoothed(amp->plugin, Param_PreampGain) * 4.f;
+        const f64 gain = get_parameter_smoothed(amp->plugin, Param_PreampGain, amp->ch_idx) * 4.f;
         const f32 x = in[i];
         f32 y = x * gain;
         f64 yl, yh;
@@ -187,7 +190,7 @@ static f64 str_x_poweramp_saturate(f64 x, f64 g, f64 ln, f64 lp) {
 
 static void str_x_process_poweramp_hi(STR_X *amp, const f32 *in, f32 *out, u32 num_frames) {
     for (u32 i = 0; i < num_frames; ++i) {
-        const f64 gain = get_parameter_smoothed(amp->plugin, Param_MasterGain) * 0.6;
+        const f64 gain = get_parameter_smoothed(amp->plugin, Param_MasterGain, amp->ch_idx) * 0.6;
         f64 y = in[i] * gain;
         f64 yp = str_x_poweramp_saturate(y, 1.7, 23.6, 1.01);
         f64 yn = str_x_poweramp_saturate(y, 1.7, 1.01, 23.6);
@@ -204,7 +207,7 @@ static void str_x_process_poweramp_hi(STR_X *amp, const f32 *in, f32 *out, u32 n
 
 static void str_x_process_poweramp_low(STR_X *amp, const f32 *in, f32 *out, u32 num_frames) {
     for (u32 i = 0; i < num_frames; ++i) {
-        const f64 gain = get_parameter_smoothed(amp->plugin, Param_MasterGain) * 0.6;
+        const f64 gain = get_parameter_smoothed(amp->plugin, Param_MasterGain, amp->ch_idx) * 0.6;
         f64 y = in[i] * gain;
         f64 yp = str_x_poweramp_saturate(y, 1.7, 23.6, 1.01);
         f64 yn = str_x_poweramp_saturate(y, 1.7, 1.01, 23.6);

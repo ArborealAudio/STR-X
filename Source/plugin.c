@@ -6,8 +6,8 @@ typedef struct {
 
 void init(Plugin *plugin) {
     PluginData *data = plugin_get_user(plugin);
-    str_x_init(&data->str_x[0], plugin);
-    str_x_init(&data->str_x[1], plugin);
+    str_x_init(&data->str_x[0], plugin, 0);
+    str_x_init(&data->str_x[1], plugin, 1);
 }
 
 void deinit(Plugin *plugin) {}
