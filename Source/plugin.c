@@ -20,8 +20,9 @@ void prepare(Plugin *plugin, f64 sample_rate, u32 num_frames) {
 
 void process(Plugin *plugin, const AudioBuffer32 in_buf, AudioBuffer32 out_buf, MidiBuffer midi) {
     PluginData *data = plugin_get_user(plugin);
+    ParameterData params = get_plugin_parameters(plugin);
     for (u32 ch = 0; ch < in_buf.num_ch; ++ch) {
-        str_x_process(&data->str_x[ch], in_buf.data[ch], out_buf.data[ch], in_buf.num_frames);
+        str_x_process(&data->str_x[ch], &params, in_buf.data[ch], out_buf.data[ch], in_buf.num_frames);
     }
 }
 

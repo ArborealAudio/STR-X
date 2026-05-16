@@ -29,7 +29,7 @@ typedef struct {
 
 } STR_X;
 
-static void str_x_tonestack_update(STR_X *amp);
+static void str_x_tonestack_update(STR_X *amp, const ParameterData *params);
 
 // Initialize filter state
 static void str_x_init(STR_X *amp, Plugin *plugin) {
@@ -60,7 +60,8 @@ static void str_x_init(STR_X *amp, Plugin *plugin) {
     };
 
     lr_filter_init(&amp->lr);
-    str_x_tonestack_update(amp);
+    ParameterData params = get_plugin_parameters(plugin);
+    str_x_tonestack_update(amp, &params);
 }
 
 static void str_x_prepare(STR_X *amp, f64 sample_rate) {
@@ -80,11 +81,11 @@ static void str_x_prepare(STR_X *amp, f64 sample_rate) {
     filter_set_sample_rate(&amp->poweramp_dc[1], sample_rate);
 }
 
-static void str_x_tonestack_update(STR_X *amp) {
-    f32 bass = get_parameter(amp->plugin, Param_Bass);
-    f32 mid = get_parameter(amp->plugin, Param_Mid);
-    f32 treb = get_parameter(amp->plugin, Param_Treble);
-    f32 pres = get_parameter(amp->plugin, Param_Presence);
+static void str_x_tonestack_update(STR_X *amp, const ParameterData *params) {
+    f32 bass = params->bass;
+    f32 mid = params->mid;
+    f32 treb = params->treble;
+    f32 pres = params->presence;
 
     if (amp->last_bass != bass) {
         f32 map = db2linf(mapf(bass / 10.f, -12, 12));
@@ -135,8 +136,8 @@ static f64 str_x_preamp_saturate_low(f64 x) {
 }
 
 static void str_x_process_preamp_hi(STR_X *amp, const f32 *in, f32 *out, u32 num_frames) {
-    const f32 gain = get_parameter(amp->plugin, Param_PreampGain) * 2.667f;
     for (u32 i = 0; i < num_frames; ++i) {
+        const f32 gain = get_parameter_smoothed(amp->plugin, Param_PreampGain) * 2.667f;
         const f32 x = in[i];
         f32 y = x * gain;
         f64 yl, yh;
@@ -156,8 +157,8 @@ static void str_x_process_preamp_hi(STR_X *amp, const f32 *in, f32 *out, u32 num
 }
 
 static void str_x_process_preamp_low(STR_X *amp, const f32 *in, f32 *out, u32 num_frames) {
-    const f64 gain = get_parameter(amp->plugin, Param_PreampGain) * 4.f;
     for (u32 i = 0; i < num_frames; ++i) {
+        const f64 gain = get_parameter_smoothed(amp->plugin, Param_PreampGain) * 4.f;
         const f32 x = in[i];
         f32 y = x * gain;
         f64 yl, yh;
@@ -185,8 +186,8 @@ static f64 str_x_poweramp_saturate(f64 x, f64 g, f64 ln, f64 lp) {
 }
 
 static void str_x_process_poweramp_hi(STR_X *amp, const f32 *in, f32 *out, u32 num_frames) {
-    const f64 gain = get_parameter(amp->plugin, Param_MasterGain) * 0.6;
     for (u32 i = 0; i < num_frames; ++i) {
+        const f64 gain = get_parameter_smoothed(amp->plugin, Param_MasterGain) * 0.6;
         f64 y = in[i] * gain;
         f64 yp = str_x_poweramp_saturate(y, 1.7, 23.6, 1.01);
         f64 yn = str_x_poweramp_saturate(y, 1.7, 1.01, 23.6);
@@ -202,8 +203,8 @@ static void str_x_process_poweramp_hi(STR_X *amp, const f32 *in, f32 *out, u32 n
 }
 
 static void str_x_process_poweramp_low(STR_X *amp, const f32 *in, f32 *out, u32 num_frames) {
-    const f64 gain = get_parameter(amp->plugin, Param_MasterGain) * 0.6;
     for (u32 i = 0; i < num_frames; ++i) {
+        const f64 gain = get_parameter_smoothed(amp->plugin, Param_MasterGain) * 0.6;
         f64 y = in[i] * gain;
         f64 yp = str_x_poweramp_saturate(y, 1.7, 23.6, 1.01);
         f64 yn = str_x_poweramp_saturate(y, 1.7, 1.01, 23.6);
@@ -218,12 +219,12 @@ static void str_x_process_poweramp_low(STR_X *amp, const f32 *in, f32 *out, u32 
     }
 }
 
-static void str_x_process(STR_X *amp, const f32 *in, f32 *out, u32 num_frames) {
-    str_x_tonestack_update(amp);
-    // TODO This should look like:
-    // GainChannel gain_ch = amp->params->gain_ch;
-    GainChannel gain_ch = (GainChannel)get_parameter(amp->plugin, Param_GainChannel);
-    AmpMode amp_mode = (AmpMode)get_parameter(amp->plugin, Param_AmpMode);
+static void str_x_process(STR_X *amp, ParameterData *params, const f32 *in, f32 *out, u32 num_frames) {
+    str_x_tonestack_update(amp, params);
+    GainChannel gain_ch = params->gain_channel;
+    AmpMode amp_mode = params->amp_mode;
+    // TODO replace this with:
+    // if (param_changed(Param_AmpMode))
     if (amp_mode != amp->last_amp_mode)
         str_x_mode_update(amp, amp_mode);
 
