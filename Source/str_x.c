@@ -23,9 +23,6 @@ typedef struct {
     IIR_Filter ts_presence;
     IIR_Filter ts_bright;
 
-    float last_bass, last_mid, last_treb, last_pres;
-    AmpMode last_amp_mode;
-
     // poweramp filters
     IIR_Filter poweramp_dc[2];
 
@@ -85,39 +82,34 @@ static void str_x_prepare(STR_X *amp, f64 sample_rate) {
 }
 
 static void str_x_tonestack_update(STR_X *amp, const ParameterData *params) {
-    f32 bass = params->bass;
-    f32 mid = params->mid;
-    f32 treb = params->treble;
-    f32 pres = params->presence;
 
-    if (amp->last_bass != bass) {
+    if (parameter_changed(amp->plugin, Param_Bass)) {
+        f32 bass = params->bass;
         f32 map = db2linf(mapf(bass / 10.f, -12, 12));
         filter_set_gain(&amp->ts_bass, map);
-        amp->last_bass = bass;
     }
 
-    if (amp->last_mid != mid) {
+    if (parameter_changed(amp->plugin, Param_Mid)) {
+        f32 mid = params->mid;
         f32 map = db2linf(mapf(mid / 10.f, -7, 7));
         filter_set_gain(&amp->ts_mid, map);
-        amp->last_mid = mid;
     }
 
-    if (amp->last_treb != treb) {
+    if (parameter_changed(amp->plugin, Param_Treble)) {
+        f32 treb = params->treble;
         f32 map = db2linf(mapf(treb / 10.f, -14, 14));
         filter_set_gain(&amp->ts_treb, map);
-        amp->last_treb = treb;
     }
 
-    if (amp->last_pres != pres) {
+    if (parameter_changed(amp->plugin, Param_Presence)) {
+        f32 pres = params->presence;
         f32 map = db2linf(mapf(pres / 10.f, -8, 8));
         filter_set_gain(&amp->ts_presence, map);
-        amp->last_pres = pres;
     }
 }
 
 static void str_x_mode_update(STR_X *amp, AmpMode new_mode) {
     lr_filter_set_cutoff(&amp->lr, lr_cutoffs[new_mode]);
-    amp->last_amp_mode = new_mode;
 }
 
 static f64 str_x_preamp_saturate_hi(f64 k, f64 x) {
@@ -226,10 +218,9 @@ static void str_x_process(STR_X *amp, ParameterData *params, const f32 *in, f32 
     str_x_tonestack_update(amp, params);
     GainChannel gain_ch = params->gain_channel;
     AmpMode amp_mode = params->amp_mode;
-    // TODO replace this with:
-    // if (param_changed(Param_AmpMode))
-    if (amp_mode != amp->last_amp_mode)
+    if (parameter_changed(amp->plugin, Param_AmpMode))
         str_x_mode_update(amp, amp_mode);
+    bool bright = params->bright;
 
     // Preamp
     if (gain_ch == High) {
@@ -250,7 +241,7 @@ static void str_x_process(STR_X *amp, ParameterData *params, const f32 *in, f32 
         y = filter_process_sample(&amp->ts_presence, y);
         out[i] = y;
     }
-    if ((bool)get_parameter(amp->plugin, Param_Bright)) {
+    if (bright) {
         filter_process(&amp->ts_bright, out, out, num_frames);
     }
     // Poweramp
