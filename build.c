@@ -23,8 +23,8 @@ int main(int argc, char *argv[]) {
         .arbor_src_path = "arbor/src",
         .format = BuildFormat_VST3 | BuildFormat_CLAP,
         .config = config,
-        .debug = true,
-        .install = true,
+        .debug = TRUE,
+        .install = TRUE,
     };
 
     build_plugin(&pb);

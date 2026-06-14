@@ -132,7 +132,7 @@ static f64 str_x_preamp_saturate_low(f64 x) {
 
 static void str_x_process_preamp_hi(STR_X *amp, const f32 *in, f32 *out, u32 num_frames) {
     for (u32 i = 0; i < num_frames; ++i) {
-        const f32 gain = get_parameter_smoothed(amp->plugin, Param_PreampGain, amp->ch_idx) * 2.667f;
+        const f32 gain = get_parameter_smoothed(amp->plugin, preamp_gain, amp->ch_idx) * 2.667f;
         const f32 x = in[i];
         f32 y = x * gain;
         f64 yl, yh;
@@ -153,7 +153,7 @@ static void str_x_process_preamp_hi(STR_X *amp, const f32 *in, f32 *out, u32 num
 
 static void str_x_process_preamp_low(STR_X *amp, const f32 *in, f32 *out, u32 num_frames) {
     for (u32 i = 0; i < num_frames; ++i) {
-        const f64 gain = get_parameter_smoothed(amp->plugin, Param_PreampGain, amp->ch_idx) * 4.f;
+        const f64 gain = get_parameter_smoothed(amp->plugin, preamp_gain, amp->ch_idx) * 4.f;
         const f32 x = in[i];
         f32 y = x * gain;
         f64 yl, yh;
@@ -182,7 +182,7 @@ static f64 str_x_poweramp_saturate(f64 x, f64 g, f64 ln, f64 lp) {
 
 static void str_x_process_poweramp_hi(STR_X *amp, const f32 *in, f32 *out, u32 num_frames) {
     for (u32 i = 0; i < num_frames; ++i) {
-        const f64 gain = get_parameter_smoothed(amp->plugin, Param_MasterGain, amp->ch_idx) * 0.6;
+        const f64 gain = get_parameter_smoothed(amp->plugin, master_gain, amp->ch_idx) * 0.6;
         f64 y = in[i] * gain;
         f64 yp = str_x_poweramp_saturate(y, 1.7, 23.6, 1.01);
         f64 yn = str_x_poweramp_saturate(y, 1.7, 1.01, 23.6);
@@ -199,7 +199,7 @@ static void str_x_process_poweramp_hi(STR_X *amp, const f32 *in, f32 *out, u32 n
 
 static void str_x_process_poweramp_low(STR_X *amp, const f32 *in, f32 *out, u32 num_frames) {
     for (u32 i = 0; i < num_frames; ++i) {
-        const f64 gain = get_parameter_smoothed(amp->plugin, Param_MasterGain, amp->ch_idx) * 0.6;
+        const f64 gain = get_parameter_smoothed(amp->plugin, master_gain, amp->ch_idx) * 0.6;
         f64 y = in[i] * gain;
         f64 yp = str_x_poweramp_saturate(y, 1.7, 23.6, 1.01);
         f64 yn = str_x_poweramp_saturate(y, 1.7, 1.01, 23.6);
@@ -220,7 +220,7 @@ static void str_x_process(STR_X *amp, ParameterData *params, const f32 *in, f32 
     AmpMode amp_mode = params->amp_mode;
     if (parameter_changed(amp->plugin, Param_AmpMode))
         str_x_mode_update(amp, amp_mode);
-    bool bright = params->bright;
+    bool32 bright = params->bright;
 
     // Preamp
     if (gain_ch == High) {
