@@ -26,6 +26,15 @@ void process(Plugin *plugin, const AudioBuffer32 in_buf, AudioBuffer32 out_buf, 
     }
 }
 
+void gui_init(Plugin *plugin) {
+    create_plugin_gui(plugin, (PluginGuiDesc){ .create_ui = TRUE });
+}
+
+void gui_render(Plugin *plugin) {
+    UICtx *ui = plugin->gui.ui;
+    ui_set_background_color(ui, (av_Colorf){.g = 0.5, .b = 0.5, .a = 1});
+}
+
 PluginInterface plugin_create(Allocator *alloc) {
     PluginData *data = alloc->alloc(alloc, sizeof(PluginData));
     return (PluginInterface){
@@ -34,5 +43,9 @@ PluginInterface plugin_create(Allocator *alloc) {
         .deinit_cb = deinit,
         .prepare_cb = prepare,
         .process_cb = process,
+        .gui_init_cb = gui_init,
+        .gui_render_cb = gui_render,
+        .gui_width = 600,
+        .gui_height = 400,
     };
 }
