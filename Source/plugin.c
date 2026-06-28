@@ -20,19 +20,27 @@ void prepare(Plugin *plugin, f64 sample_rate, u32 num_frames) {
 
 void process(Plugin *plugin, const AudioBuffer32 in_buf, AudioBuffer32 out_buf, MidiBuffer midi) {
     PluginData *data = plugin_get_user(plugin);
-    ParameterData params = get_plugin_parameters(plugin);
+    ParameterData params = get_audio_parameters(plugin);
     for (u32 ch = 0; ch < in_buf.num_ch; ++ch) {
         str_x_process(&data->str_x[ch], &params, in_buf.data[ch], out_buf.data[ch], in_buf.num_frames);
     }
 }
 
 void gui_init(Plugin *plugin) {
-    create_plugin_gui(plugin, (PluginGuiDesc){ .create_ui = TRUE });
+    create_plugin_gui(plugin, (PluginGuiDesc){ .create_ui_builder = TRUE });
 }
 
-void gui_render(Plugin *plugin) {
-    UICtx *ui = plugin->gui.ui;
+void gui_render(PluginGui *gui) {
+    UICtx *ui = gui->ui;
     ui_set_background_color(ui, (av_Colorf){.g = 0.5, .b = 0.5, .a = 1});
+
+    ui_column_begin(ui, default_style);
+
+    ui_label(ui, STR_LIT("STR_X2"), default_style);
+
+    arbor_quick_ui(gui);
+
+    ui_column_end(ui);
 }
 
 PluginInterface plugin_create(Allocator *alloc) {
@@ -45,7 +53,7 @@ PluginInterface plugin_create(Allocator *alloc) {
         .process_cb = process,
         .gui_init_cb = gui_init,
         .gui_render_cb = gui_render,
-        .gui_width = 600,
-        .gui_height = 400,
+        .gui_width = 900,
+        .gui_height = 600,
     };
 }

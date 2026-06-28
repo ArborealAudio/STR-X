@@ -60,7 +60,7 @@ static void str_x_init(STR_X *amp, Plugin *plugin, u32 ch_idx) {
     };
 
     lr_filter_init(&amp->lr);
-    ParameterData params = get_plugin_parameters(plugin);
+    ParameterData params = get_audio_parameters(plugin);
     str_x_tonestack_update(amp, &params);
 }
 
