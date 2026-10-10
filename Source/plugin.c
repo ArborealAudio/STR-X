@@ -31,20 +31,22 @@ void gui_init(Plugin *plugin) {
 }
 
 void gui_render(PluginGui *gui) {
-    UICtx *ui = gui->ui;
-    ui_set_background_color(ui, (av_Colorf){.g = 0.5, .b = 0.5, .a = 1});
+    UiCtx *ui = gui->ui;
 
-    ui_column_begin(ui, default_style);
+    ui_column_begin(ui);
 
-    ui_label(ui, STR_LIT("STR_X2"), default_style);
+    ui_row_begin(ui);
+    ui_spacer(ui, Horizontal);
+    ui_label(ui, STR_LIT("STR_X2"));
+    ui_row_end(ui);
 
     arbor_quick_ui(gui);
 
     ui_column_end(ui);
 }
 
-PluginInterface plugin_create(Allocator *alloc) {
-    PluginData *data = alloc->alloc(alloc, sizeof(PluginData));
+PluginInterface plugin_create(Arena *arena) {
+    PluginData *data = arena_alloc(arena, sizeof(PluginData));
     return (PluginInterface){
         .user = data,
         .init_cb = init,
