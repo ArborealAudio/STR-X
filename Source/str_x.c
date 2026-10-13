@@ -1,3 +1,4 @@
+#include "../arbor/src/arbor.h"
 
 static const f32 lr_cutoffs[] = { 100, 250, 400, };
 
@@ -41,7 +42,7 @@ static void str_x_init(STR_X *amp, Plugin *plugin, u32 ch_idx) {
             .type = IIR_Filter_FirstOrderLowshelf,
             .cutoff = 185, .reso = 1.8, .gain = 0.5,
         },
-        .lr = {.cutoff = lr_cutoffs[(uint)get_parameter_default(plugin, Param_AmpMode)]},
+        // .lr = {.cutoff = lr_cutoffs[(uint)get_parameter_default(plugin, Param_AmpMode)]},
         .ts_hpf = (IIR_Filter){.type = IIR_Filter_FirstOrderHighpass, .cutoff = 750},
         .ts_lpf = (IIR_Filter){.type = IIR_Filter_FirstOrderLowpass, .cutoff = 10e3f},
         .ts_bpf = (IIR_Filter){.type = IIR_Filter_Bandpass, .cutoff = 80, .reso = SQRT1_2},
@@ -59,7 +60,6 @@ static void str_x_init(STR_X *amp, Plugin *plugin, u32 ch_idx) {
         },
     };
 
-    lr_filter_init(&amp->lr);
     ParameterData params = get_audio_parameters(plugin);
     str_x_tonestack_update(amp, &params);
 }
@@ -68,7 +68,8 @@ static void str_x_prepare(STR_X *amp, f64 sample_rate) {
     filter_set_sample_rate(&amp->preamp_hpf, sample_rate);
     filter_set_sample_rate(&amp->preamp_dc, sample_rate);
     filter_set_sample_rate(&amp->preamp_lowshelf, sample_rate);
-    lr_filter_set_sample_rate(&amp->lr, sample_rate);
+    // lr_filter_set_sample_rate(&amp->lr, sample_rate);
+    lr_filter_init(&amp->lr, lr_cutoffs[(uint)get_parameter_default(amp->plugin, Param_AmpMode)], sample_rate);
     filter_set_sample_rate(&amp->ts_hpf, sample_rate);
     filter_set_sample_rate(&amp->ts_lpf, sample_rate);
     filter_set_sample_rate(&amp->ts_bpf, sample_rate);
@@ -109,6 +110,7 @@ static void str_x_tonestack_update(STR_X *amp, const ParameterData *params) {
 }
 
 static void str_x_mode_update(STR_X *amp, AmpMode new_mode) {
+    dbg("New cutoff: %.2f", lr_cutoffs[new_mode]);
     lr_filter_set_cutoff(&amp->lr, lr_cutoffs[new_mode]);
 }
 
@@ -244,7 +246,7 @@ static void str_x_process(STR_X *amp, ParameterData *params, const f64 *in, f64 
     if (bright) {
         filter_process(&amp->ts_bright, out, out, num_frames);
     }
-    // Poweramp
+    // // Poweramp
     if (gain_ch == High) {
         str_x_process_poweramp_hi(amp, out, out, num_frames);
     } else {

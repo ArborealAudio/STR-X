@@ -32,7 +32,9 @@ void process_double(Plugin *plugin, const AudioBuffer64 in_buf, AudioBuffer64 ou
 void process(Plugin *plugin, const AudioBuffer32 in_buf, AudioBuffer32 out_buf, MidiBuffer midi) {
     PluginData *data = plugin_get_user(plugin);
     audio_buffer64_copy_from_32(data->buffer, in_buf);
-    process_double(plugin, data->buffer, data->buffer, midi);
+    AudioBuffer64 proc_buf = audio_buffer64_slice(data->buffer, 0, in_buf.num_frames);
+    process_double(plugin, proc_buf, proc_buf, midi);
+    audio_buffer32_copy_from_64(out_buf, proc_buf);
 }
 
 void gui_init(Plugin *plugin) {
